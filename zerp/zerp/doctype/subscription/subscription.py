@@ -59,13 +59,15 @@ class Subscription(Document):
         if existing:
             frappe.throw(f"Subdomain {self.sub_domain} is already in use")
             
-    def before_submit(self):
+    def after_insert(self):
+        # Set status to Active for new subscriptions
         self.status = "Active"
+        self.db_set('status', 'Active', update_modified=False)
         
-        # Trigger site creation when subscription is submitted
+        # Trigger site creation for new subscription
         if not self.is_site_created:
             enqueue_site_creation(self.name)
-        
+    
     def on_update(self):
         self.check_expiry()
     
