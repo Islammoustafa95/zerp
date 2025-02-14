@@ -1,0 +1,231 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "autoname": "SUB-.YYYY.-.#####",
+ "creation": "2024-01-01 12:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "subscription_details_section",
+  "user",
+  "sub_domain",
+  "subscription_type",
+  "plan",
+  "column_break_5",
+  "start_date",
+  "end_date",
+  "is_site_created",
+  "status",
+  "plan_details_section",
+  "plan_name",
+  "plan_monthly_subscription",
+  "plan_description",
+  "column_break_13",
+  "plan_apps",
+  "system_details_section",
+  "last_renewal_date",
+  "next_renewal_date",
+  "total_active_days",
+  "column_break_19",
+  "created_by",
+  "creation_date",
+  "modified_by",
+  "modified_date"
+ ],
+ "fields": [
+  {
+   "fieldname": "subscription_details_section",
+   "fieldtype": "Section Break",
+   "label": "Subscription Details"
+  },
+  {
+   "fieldname": "user",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "User",
+   "options": "User",
+   "reqd": 1
+  },
+  {
+   "fieldname": "sub_domain",
+   "fieldtype": "Data",
+   "label": "Sub Domain",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "subscription_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Subscription Type",
+   "options": "Trial\nPaid",
+   "reqd": 1
+  },
+  {
+   "fieldname": "plan",
+   "fieldtype": "Link",
+   "label": "Plan",
+   "options": "Subscription Plan",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_5",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "start_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Start Date",
+   "reqd": 1
+  },
+  {
+   "fieldname": "end_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "End Date",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "is_site_created",
+   "fieldtype": "Check",
+   "label": "Is Site Created"
+  },
+  {
+   "fieldname": "plan_details_section",
+   "fieldtype": "Section Break",
+   "label": "Plan Details"
+  },
+  {
+   "fetch_from": "plan.plan_name",
+   "fieldname": "plan_name",
+   "fieldtype": "Data",
+   "label": "Plan Name",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "plan.plan_monthly_subscription",
+   "fieldname": "plan_monthly_subscription",
+   "fieldtype": "Currency",
+   "label": "Plan Monthly Subscription",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "plan.plan_description",
+   "fieldname": "plan_description",
+   "fieldtype": "Text Editor",
+   "label": "Plan Description",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_13",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fetch_from": "plan.plan_apps",
+   "fieldname": "plan_apps",
+   "fieldtype": "Table",
+   "label": "Plan Apps",
+   "options": "Subscription Plan App",
+   "read_only": 1
+  },
+  {
+   "fieldname": "system_details_section",
+   "fieldtype": "Section Break",
+   "label": "System Details"
+  },
+  {
+   "fieldname": "last_renewal_date",
+   "fieldtype": "Date",
+   "label": "Last Renewal Date",
+   "read_only": 1
+  },
+  {
+   "fieldname": "next_renewal_date",
+   "fieldtype": "Date",
+   "label": "Next Renewal Date",
+   "read_only": 1
+  },
+  {
+   "fieldname": "total_active_days",
+   "fieldtype": "Int",
+   "label": "Total Active Days",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_19",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "created_by",
+   "fieldtype": "Link",
+   "label": "Created By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "creation_date",
+   "fieldtype": "Datetime",
+   "label": "Creation Date",
+   "read_only": 1
+  },
+  {
+   "fieldname": "modified_by",
+   "fieldtype": "Link",
+   "label": "Modified By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "modified_date",
+   "fieldtype": "Datetime",
+   "label": "Modified Date",
+   "read_only": 1
+  },
+  {
+   "default": "Active",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Draft\nActive\nExpired\nCancelled"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2024-01-01 12:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Zerp",
+ "name": "Subscription",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "All",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

@@ -5,6 +5,80 @@ app_description = "saas"
 app_email = "islammoustafa86@outlook.com"
 app_license = "mit"
 
+# Website Settings
+website_route_rules = [
+    {"from_route": "/subscription", "to_route": "subscription"},
+    {"from_route": "/subscription/register", "to_route": "subscription/register"},
+    {"from_route": "/subscription/plans", "to_route": "subscription/plans"}
+]
+
+# Export Web Forms
+fixtures = [
+    {
+        "dt": "Web Form",
+        "filters": [
+            ["module", "=", "Zerp"]
+        ]
+    },
+    {
+        "dt": "Web Page",
+        "filters": [
+            ["module", "=", "Zerp"]
+        ]
+    },
+    {
+        "dt": "Website Settings",
+        "filters": [
+            ["name", "=", "Website Settings"]
+        ]
+    },
+    {
+        "dt": "Website Theme",
+        "filters": [
+            ["name", "=", "Standard"]
+        ]
+    },
+    {
+        "dt": "Website Script",
+        "filters": [
+            ["name", "=", "Website Script"]
+        ]
+    },
+    {
+        "dt": "Website Sidebar",
+        "filters": [
+            ["module", "=", "Zerp"]
+        ]
+    },
+    {
+        "dt": "Workspace",
+        "filters": [
+            ["module", "=", "Zerp"]
+        ]
+    },
+    {
+        "dt": "Portal Settings",
+        "filters": [
+            ["name", "=", "Portal Settings"]
+        ]
+    }
+]
+
+# Web Forms Export
+webform_export = [
+    "Subscription Registration",
+    "Subscription Plan Selection"
+]
+
+# Web Pages Export
+webpage_export = [
+    "subscription",
+    "subscription/register",
+    "subscription/plans",
+    "subscription/success",
+    "subscription/error"
+]
+
 # Apps
 # ------------------
 
