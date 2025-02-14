@@ -30,18 +30,28 @@ class Subscription(Document):
         # Ensure we have a plan
         if not self.plan:
             frappe.throw("Subscription Plan is required")
-            
-    def on_update(self):
-        """Trigger site creation after document is saved and committed"""
-        if not self.is_site_created:
-            # Commit any pending changes first
-            frappe.db.commit()
-            
-            # Now queue the site creation
-            frappe.enqueue(
-                "zerp.zerp.server_scripts.site_creation.create_site",
-                queue="long",
-                timeout=1500,
-                subscription_name=self.name,
-                now=True  # Run immediately
-            )
+
+    def after_insert(self):
+        """After the document is saved and committed, queue the site creation"""
+        # Ensure we're not re-triggering site creation
+        if self.is_site_created:
+            return
+
+        # Commit the current transaction to ensure document is saved
+        frappe.db.commit()
+
+        # Now queue the site creation as a background job
+        frappe.enqueue(
+            "zerp.zerp.server_scripts.site_creation.create_site",
+            queue="long",
+            timeout=1500,
+            subscription_name=self.name,
+            at_front=True  # Put this job at the front of the queue
+        )
+
+        # Show a message to the user
+        frappe.msgprint(
+            msg='Subscription saved successfully. Site creation has been queued and will be processed in the background.',
+            title='Site Creation Started',
+            indicator='green'
+        )

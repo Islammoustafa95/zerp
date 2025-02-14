@@ -43,10 +43,9 @@ def create_site(subscription_name):
         
         # Get apps to install from subscription plan
         plan_apps = frappe.get_doc("Subscription Plan", subscription.plan)
-        apps_to_install = ["zerp"]  # Always install zerp
+        apps_to_install = []  # Only apps from the plan
         for app in plan_apps.plan_apps:
-            if app.app_name not in apps_to_install:
-                apps_to_install.append(app.app_name)
+            apps_to_install.append(app.app_name)
                 
         # Log apps to be installed
         frappe.log_error(
@@ -54,22 +53,18 @@ def create_site(subscription_name):
             title="Site Creation Apps"
         )
         
-        # Prepare bench command
+        # Prepare site creation command (without apps)
         bench_path = get_bench_path()
-        command = [
+        create_site_cmd = [
             "bench",
             "new-site",
             site_name,
             "--admin-password", "admin",
             "--mariadb-root-password", settings.mysql_root_password
         ]
-        
-        # Add apps to install
-        for app in apps_to_install:
-            command.extend(["--install-app", app])
             
         # Log the command (excluding sensitive info)
-        safe_command = command.copy()
+        safe_command = create_site_cmd.copy()
         safe_command[safe_command.index(settings.mysql_root_password)] = "****"
         frappe.log_error(
             message=f"Will execute: {' '.join(safe_command)}",
@@ -78,7 +73,7 @@ def create_site(subscription_name):
         
         # Execute site creation
         process = subprocess.Popen(
-            command,
+            create_site_cmd,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             cwd=bench_path
@@ -88,12 +83,40 @@ def create_site(subscription_name):
         
         # Log the output
         frappe.log_error(
-            message=f"Command output:\nSTDOUT: {stdout.decode()}\nSTDERR: {stderr.decode()}",
+            message=f"Site creation output:\nSTDOUT: {stdout.decode()}\nSTDERR: {stderr.decode()}",
             title="Site Creation Output"
         )
         
         if process.returncode != 0:
             raise Exception(f"Site creation failed: {stderr.decode()}")
+            
+        # Install apps one by one
+        for app in apps_to_install:
+            install_app_cmd = f"bench --site {site_name} install-app {app}"
+            
+            frappe.log_error(
+                message=f"Installing app: {install_app_cmd}",
+                title="App Installation"
+            )
+            
+            process = subprocess.Popen(
+                install_app_cmd,
+                shell=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                cwd=bench_path
+            )
+            
+            stdout, stderr = process.communicate()
+            
+            # Log the output
+            frappe.log_error(
+                message=f"App {app} installation output:\nSTDOUT: {stdout.decode()}\nSTDERR: {stderr.decode()}",
+                title=f"App Installation: {app}"
+            )
+            
+            if process.returncode != 0:
+                raise Exception(f"Failed to install app {app}: {stderr.decode()}")
             
         # Update subscription status using direct SQL
         frappe.db.sql("""
