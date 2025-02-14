@@ -6,20 +6,31 @@ from frappe.utils import get_bench_path
 def create_site(subscription_name):
     """Create a new site for the subscription"""
     try:
-        # Get subscription document
-        subscription = frappe.get_doc("Subscription", subscription_name)
+        frappe.db.commit()  # Commit any pending transactions
+        
+        # Log the start
+        frappe.log_error(
+            message=f"Starting site creation process for {subscription_name}",
+            title="Site Creation Started"
+        )
+        
+        # Get subscription document with direct SQL to avoid transaction issues
+        subscription_doc = frappe.db.sql("""
+            SELECT name, sub_domain, plan, user
+            FROM `tabSubscription`
+            WHERE name = %s
+        """, subscription_name, as_dict=1)
+        
+        if not subscription_doc:
+            raise Exception(f"Subscription {subscription_name} not found in database")
+            
+        subscription = subscription_doc[0]
         
         # Get settings
         settings = frappe.get_single("Zerp Settings")
         if not settings:
             raise Exception("Zerp Settings not found")
             
-        # Log the process
-        frappe.log_error(
-            message=f"Processing site creation for {subscription_name}",
-            title="Site Creation Process"
-        )
-        
         # Basic validation
         if not settings.mysql_root_password:
             raise Exception("MySQL root password not configured in Zerp Settings")
@@ -31,15 +42,15 @@ def create_site(subscription_name):
         site_name = f"{subscription.sub_domain}.{settings.base_domain}"
         
         # Get apps to install from subscription plan
-        plan = frappe.get_doc("Subscription Plan", subscription.plan)
+        plan_apps = frappe.get_doc("Subscription Plan", subscription.plan)
         apps_to_install = ["zerp"]  # Always install zerp
-        for app in plan.plan_apps:
+        for app in plan_apps.plan_apps:
             if app.app_name not in apps_to_install:
                 apps_to_install.append(app.app_name)
                 
         # Log apps to be installed
         frappe.log_error(
-            message=f"Apps to install: {apps_to_install}",
+            message=f"Will install these apps: {apps_to_install}",
             title="Site Creation Apps"
         )
         
@@ -61,7 +72,7 @@ def create_site(subscription_name):
         safe_command = command.copy()
         safe_command[safe_command.index(settings.mysql_root_password)] = "****"
         frappe.log_error(
-            message=f"Executing command: {' '.join(safe_command)}",
+            message=f"Will execute: {' '.join(safe_command)}",
             title="Site Creation Command"
         )
         
@@ -84,9 +95,14 @@ def create_site(subscription_name):
         if process.returncode != 0:
             raise Exception(f"Site creation failed: {stderr.decode()}")
             
-        # Update subscription status
-        subscription.db_set('is_site_created', 1, update_modified=False)
-        subscription.db_set('site_url', f"https://{site_name}", update_modified=False)
+        # Update subscription status using direct SQL
+        frappe.db.sql("""
+            UPDATE `tabSubscription`
+            SET is_site_created = 1,
+                site_url = %s
+            WHERE name = %s
+        """, (f"https://{site_name}", subscription_name))
+        frappe.db.commit()
         
         # Send email notification
         send_success_email(subscription, site_name)

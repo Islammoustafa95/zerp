@@ -31,25 +31,17 @@ class Subscription(Document):
         if not self.plan:
             frappe.throw("Subscription Plan is required")
             
-    def after_insert(self):
-        """Queue site creation after subscription is created"""
-        try:
-            # Log the start of site creation process
-            frappe.log_error(
-                message=f"Starting site creation for subscription {self.name}",
-                title="Site Creation Started"
-            )
+    def on_update(self):
+        """Trigger site creation after document is saved and committed"""
+        if not self.is_site_created:
+            # Commit any pending changes first
+            frappe.db.commit()
             
-            # Enqueue the site creation job
+            # Now queue the site creation
             frappe.enqueue(
-                method="zerp.zerp.server_scripts.site_creation.create_site",
+                "zerp.zerp.server_scripts.site_creation.create_site",
                 queue="long",
                 timeout=1500,
-                subscription_name=self.name
-            )
-            
-        except Exception as e:
-            frappe.log_error(
-                message=f"Failed to queue site creation for {self.name}: {str(e)}",
-                title="Site Creation Queue Error"
+                subscription_name=self.name,
+                now=True  # Run immediately
             )
