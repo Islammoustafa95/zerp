@@ -4,7 +4,6 @@ import subprocess
 import json
 import requests
 from frappe.utils import get_url, now, get_datetime
-from frappe.utils.password import get_decrypted_password
 from frappe import _
 import re
 
@@ -23,7 +22,7 @@ def get_cloudflare_settings():
     try:
         settings = frappe.get_doc("Zerp Settings")
         return {
-            "api_token": get_decrypted_password("Zerp Settings", "Zerp Settings", "cloudflare_api_token"),
+            "api_token": settings.cloudflare_api_token,
             "zone_id": settings.cloudflare_zone_id,
             "base_domain": settings.base_domain
         }
@@ -34,7 +33,8 @@ def get_cloudflare_settings():
 def get_mysql_password():
     """Get MySQL root password from configuration"""
     try:
-        return get_decrypted_password("Zerp Settings", "Zerp Settings", "mysql_root_password")
+        settings = frappe.get_doc("Zerp Settings")
+        return settings.mysql_root_password
     except Exception as e:
         frappe.log_error(f"Failed to get MySQL password: {str(e)}", "Site Creation Error")
         raise SiteCreationError("Failed to get MySQL root password")

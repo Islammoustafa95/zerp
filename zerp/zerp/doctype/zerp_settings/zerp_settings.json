@@ -21,7 +21,7 @@
   },
   {
    "fieldname": "cloudflare_api_token",
-   "fieldtype": "Password",
+   "fieldtype": "Data",
    "label": "Cloudflare API Token"
   },
   {
@@ -45,7 +45,7 @@
   },
   {
    "fieldname": "mysql_root_password",
-   "fieldtype": "Password",
+   "fieldtype": "Data",
    "label": "MySQL Root Password"
   }
  ],
