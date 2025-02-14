@@ -15,6 +15,7 @@
   "start_date",
   "end_date",
   "is_site_created",
+  "site_url",
   "status",
   "plan_details_section",
   "plan_name",
@@ -91,6 +92,12 @@
    "fieldname": "is_site_created",
    "fieldtype": "Check",
    "label": "Is Site Created"
+  },
+  {
+   "fieldname": "site_url",
+   "fieldtype": "Data",
+   "label": "Site URL",
+   "read_only": 1
   },
   {
    "fieldname": "plan_details_section",

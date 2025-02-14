@@ -118,13 +118,11 @@ def create_site(subscription_name):
             if process.returncode != 0:
                 raise Exception(f"Failed to install app {app}: {stderr.decode()}")
             
-        # Update subscription status using direct SQL
-        frappe.db.sql("""
-            UPDATE `tabSubscription`
-            SET is_site_created = 1,
-                site_url = %s
-            WHERE name = %s
-        """, (f"https://{site_name}", subscription_name))
+        # Update subscription status using frappe ORM for better handling
+        subscription_doc = frappe.get_doc("Subscription", subscription_name)
+        subscription_doc.is_site_created = 1
+        subscription_doc.site_url = f"https://{site_name}"
+        subscription_doc.save(ignore_permissions=True)
         frappe.db.commit()
         
         # Send email notification
