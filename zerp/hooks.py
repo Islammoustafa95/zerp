@@ -9,7 +9,8 @@ app_license = "mit"
 website_route_rules = [
     {"from_route": "/subscription", "to_route": "subscription"},
     {"from_route": "/subscription/register", "to_route": "subscription/register"},
-    {"from_route": "/subscription/plans", "to_route": "subscription/plans"}
+    {"from_route": "/subscription/plans", "to_route": "subscription/plans"},
+    {"from_route": "/subscribe", "to_route": "subscribe"}  # New route for subscription signup
 ]
 
 # Export Web Forms
@@ -76,7 +77,8 @@ webpage_export = [
     "subscription/register",
     "subscription/plans",
     "subscription/success",
-    "subscription/error"
+    "subscription/error",
+    "subscribe"  # New route for subscription signup
 ]
 
 # Apps
