@@ -148,7 +148,7 @@ def create_site(subscription_name):
                 )
         
         # Add domain to site
-        add_domain_cmd = f"bench --site {site_name} add-domain {site_name}"
+        add_domain_cmd = f"bench setup add-domain {site_name}"
         process = subprocess.Popen(
             add_domain_cmd,
             shell=True,
@@ -166,8 +166,8 @@ def create_site(subscription_name):
         
         # Setup Nginx
         nginx_setup_cmds = [
-            "bench setup nginx --yes",
-            "sudo service nginx reload"
+            "bench setup nginx --yes"
+            # Removed sudo service nginx reload as it requires terminal access
         ]
         
         for cmd in nginx_setup_cmds:
