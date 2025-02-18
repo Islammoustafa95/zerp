@@ -40,9 +40,15 @@ def create_site(subscription_name):
             raise Exception("Base domain not configured in Zerp Settings")
         
         # Validate Cloudflare settings if Cloudflare is to be used
-        if settings.use_cloudflare:
-            if not (settings.cloudflare_api_token and settings.cloudflare_zone_id):
-                raise Exception("Cloudflare API Token or Zone ID not configured")
+        use_cloudflare = getattr(settings, 'use_cloudflare', 0)
+        if use_cloudflare:
+            if not (getattr(settings, 'cloudflare_api_token', '') and 
+                    getattr(settings, 'cloudflare_zone_id', '')):
+                frappe.log_error(
+                    message="Cloudflare settings incomplete",
+                    title="Cloudflare Configuration Error"
+                )
+                use_cloudflare = 0
         
         # Prepare site URL
         site_name = f"{subscription.sub_domain}.{settings.base_domain}"
@@ -125,7 +131,7 @@ def create_site(subscription_name):
                 raise Exception(f"Failed to install app {app}: {stderr.decode()}")
         
         # Setup Cloudflare DNS if enabled
-        if settings.use_cloudflare:
+        if use_cloudflare:
             try:
                 cloudflare_response = setup_cloudflare_dns(
                     subdomain=subscription.sub_domain, 
@@ -209,10 +215,10 @@ def setup_cloudflare_dns(subdomain, cf_settings):
         "Content-Type": "application/json"
     }
     
-    # Get server IP (you might want to configure this in Zerp Settings)
-    server_ip = frappe.local.conf.get("server_ip")
+    # Get server IP 
+    server_ip = getattr(frappe.get_single("Zerp Settings"), 'server_ip', None)
     if not server_ip:
-        raise Exception("Server IP not configured")
+        raise Exception("Server IP not configured in Zerp Settings")
     
     data = {
         "type": "A",

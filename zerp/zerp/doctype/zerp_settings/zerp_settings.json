@@ -6,9 +6,11 @@
  "engine": "InnoDB",
  "field_order": [
   "cloudflare_section",
+  "use_cloudflare",
   "cloudflare_api_token",
   "cloudflare_zone_id",
   "base_domain",
+  "server_ip",
   "column_break_4",
   "mysql_section",
   "mysql_root_password"
@@ -20,19 +22,33 @@
    "label": "Cloudflare Settings"
   },
   {
+   "default": "0",
+   "fieldname": "use_cloudflare",
+   "fieldtype": "Check",
+   "label": "Use Cloudflare"
+  },
+  {
    "fieldname": "cloudflare_api_token",
    "fieldtype": "Data",
-   "label": "Cloudflare API Token"
+   "label": "Cloudflare API Token",
+   "depends_on": "use_cloudflare"
   },
   {
    "fieldname": "cloudflare_zone_id",
    "fieldtype": "Data",
-   "label": "Cloudflare Zone ID"
+   "label": "Cloudflare Zone ID",
+   "depends_on": "use_cloudflare"
   },
   {
    "fieldname": "base_domain",
    "fieldtype": "Data",
    "label": "Base Domain"
+  },
+  {
+   "fieldname": "server_ip",
+   "fieldtype": "Data",
+   "label": "Server IP",
+   "description": "IP address used for DNS records"
   },
   {
    "fieldname": "column_break_4",
