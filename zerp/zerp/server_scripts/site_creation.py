@@ -166,8 +166,8 @@ def create_site(subscription_name):
         
         # Setup Nginx
         nginx_setup_cmds = [
-            "bench setup nginx --yes"
-            # Removed sudo service nginx reload as it requires terminal access
+            "bench setup nginx --yes",
+            "sudo -n service nginx reload"  # Added -n flag for non-interactive
         ]
         
         for cmd in nginx_setup_cmds:
