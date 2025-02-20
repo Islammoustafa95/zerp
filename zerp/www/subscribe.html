@@ -44,7 +44,7 @@
                     <div class="col-md-4">
                         <div class="plan-card {% if selected_plan == plan.name %}selected{% endif %}">
                             <h3>{{ plan.plan_name }}</h3>
-                            <div class="price">{{ frappe.format_value(plan.plan_monthly_subscription, {"fieldtype": "Currency"}) }}
+                            <div class="price">{{ plan.plan_monthly_subscription }}
                                 <span class="billing-interval">/month</span>
                             </div>
                             <div class="description">

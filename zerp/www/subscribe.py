@@ -11,19 +11,23 @@ def get_context(context):
         context.selected_plan = frappe.form_dict.plan
 
 def get_subscription_plans():
-    # Fetch actual subscription plans from the DocType
-    plans = frappe.get_all(
-        "Subscription Plan",
-        fields=["name", "plan_name", "plan_monthly_subscription", "plan_description", "plan_apps"],
-        order_by="plan_monthly_subscription"
-    )
+    # Fetch all subscription plans
+    plans = frappe.get_all("Subscription Plan", fields=["name"])
     
-    # Get apps for each plan
+    # Get complete doc for each plan
+    plan_docs = []
     for plan in plans:
         plan_doc = frappe.get_doc("Subscription Plan", plan.name)
-        plan.apps = plan_doc.plan_apps
+        plan_data = {
+            "name": plan_doc.name,
+            "plan_name": plan_doc.plan_name,
+            "plan_monthly_subscription": plan_doc.plan_monthly_subscription,
+            "plan_description": plan_doc.plan_description,
+            "apps": plan_doc.plan_apps
+        }
+        plan_docs.append(plan_data)
         
-    return plans
+    return plan_docs
 
 @frappe.whitelist()
 def create_subscription():
