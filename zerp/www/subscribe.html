@@ -178,7 +178,7 @@ frappe.ready(function() {
                     });
                     // Redirect to success page or show next steps
                     setTimeout(function() {
-                        window.location.href = '/subscription/success?subscription=' + r.message.subscription;
+                        window.location.href = '/my_subscriptions';
                     }, 2000);
                 } else {
                     frappe.show_alert({
