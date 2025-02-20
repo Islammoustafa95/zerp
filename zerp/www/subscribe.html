@@ -1,0 +1,62 @@
+{% extends "templates/web.html" %}
+
+{% block page_content %}
+<div class="subscription-container">
+    <div class="row">
+        <div class="col-md-8 col-md-offset-2">
+            <h1>Subscribe to Our Service</h1>
+            <div class="subscription-plans">
+                <!-- Subscription Plans Section -->
+                <div class="row">
+                    {% for plan in subscription_plans %}
+                    <div class="col-md-4">
+                        <div class="plan-card">
+                            <h3>{{ plan.name }}</h3>
+                            <div class="price">{{ plan.price }}</div>
+                            <div class="features">
+                                <ul>
+                                    {% for feature in plan.features %}
+                                    <li>{{ feature }}</li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                            <a href="/subscription/register?plan={{ plan.name }}" class="btn btn-primary">Select Plan</a>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block style %}
+<style>
+    .subscription-container {
+        padding: 40px 0;
+    }
+    .plan-card {
+        border: 1px solid #ddd;
+        padding: 20px;
+        margin-bottom: 20px;
+        border-radius: 8px;
+        text-align: center;
+    }
+    .price {
+        font-size: 24px;
+        font-weight: bold;
+        margin: 15px 0;
+    }
+    .features ul {
+        list-style: none;
+        padding: 0;
+    }
+    .features li {
+        margin: 10px 0;
+    }
+    .btn-primary {
+        margin-top: 20px;
+    }
+</style>
+{% endblock %}
