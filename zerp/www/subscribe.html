@@ -3,24 +3,64 @@
 {% block page_content %}
 <div class="subscription-container">
     <div class="row">
-        <div class="col-md-8 col-md-offset-2">
-            <h1>Subscribe to Our Service</h1>
+        <div class="col-md-12">
+            <h1 class="text-center">Choose Your Subscription Plan</h1>
+            <p class="text-center mb-5">Select a plan that best fits your needs and create your workspace</p>
+            
+            <!-- Subscription Form -->
+            <div class="subscription-form {% if not selected_plan %}d-none{% endif %}" id="subscription-form">
+                <div class="row justify-content-center">
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-body">
+                                <h3 class="card-title">Create Your Workspace</h3>
+                                <form id="create-subscription">
+                                    <input type="hidden" name="plan" id="selected-plan" value="{{ selected_plan or '' }}">
+                                    
+                                    <div class="form-group">
+                                        <label for="subdomain">Choose Your Subdomain</label>
+                                        <div class="input-group">
+                                            <input type="text" class="form-control" id="subdomain" name="subdomain" 
+                                                   placeholder="yourcompany" value="{{ subdomain or '' }}" required>
+                                            <div class="input-group-append">
+                                                <span class="input-group-text">.{{ base_domain }}</span>
+                                            </div>
+                                        </div>
+                                        <small class="form-text text-muted">This will be your unique workspace URL</small>
+                                    </div>
+                                    
+                                    <button type="submit" class="btn btn-primary btn-block">Create Workspace</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Plans Section -->
             <div class="subscription-plans">
-                <!-- Subscription Plans Section -->
-                <div class="row">
+                <div class="row justify-content-center">
                     {% for plan in subscription_plans %}
                     <div class="col-md-4">
-                        <div class="plan-card">
-                            <h3>{{ plan.name }}</h3>
-                            <div class="price">{{ plan.price }}</div>
+                        <div class="plan-card {% if selected_plan == plan.name %}selected{% endif %}">
+                            <h3>{{ plan.plan_name }}</h3>
+                            <div class="price">{{ plan.price }}
+                                <span class="billing-interval">/{{ plan.billing_interval }}</span>
+                            </div>
                             <div class="features">
                                 <ul>
-                                    {% for feature in plan.features %}
+                                    <li><strong>{{ plan.maximum_users }}</strong> Users</li>
+                                    <li><strong>{{ plan.maximum_space }}</strong> Storage</li>
+                                    {% if plan.features %}
+                                    {% for feature in plan.features.split('\n') %}
                                     <li>{{ feature }}</li>
                                     {% endfor %}
+                                    {% endif %}
                                 </ul>
                             </div>
-                            <a href="/subscription/register?plan={{ plan.name }}" class="btn btn-primary">Select Plan</a>
+                            <button class="btn btn-primary select-plan" data-plan="{{ plan.name }}">
+                                Select Plan
+                            </button>
                         </div>
                     </div>
                     {% endfor %}
@@ -38,25 +78,115 @@
     }
     .plan-card {
         border: 1px solid #ddd;
-        padding: 20px;
-        margin-bottom: 20px;
-        border-radius: 8px;
+        padding: 30px;
+        margin-bottom: 30px;
+        border-radius: 12px;
         text-align: center;
+        transition: all 0.3s ease;
+        background: #fff;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    .plan-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 5px 20px rgba(0,0,0,0.15);
+    }
+    .plan-card.selected {
+        border: 2px solid var(--primary);
+        background: #f8f9ff;
     }
     .price {
-        font-size: 24px;
+        font-size: 32px;
         font-weight: bold;
-        margin: 15px 0;
+        margin: 20px 0;
+        color: var(--primary);
+    }
+    .billing-interval {
+        font-size: 16px;
+        color: #666;
     }
     .features ul {
         list-style: none;
         padding: 0;
+        margin: 20px 0;
     }
     .features li {
-        margin: 10px 0;
+        margin: 12px 0;
+        color: #555;
     }
-    .btn-primary {
-        margin-top: 20px;
+    .subscription-form {
+        margin: 40px 0;
+    }
+    .card {
+        border-radius: 12px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    .card-body {
+        padding: 30px;
+    }
+    .form-group {
+        margin-bottom: 20px;
+    }
+    .input-group-text {
+        background: #f8f9fa;
+        color: #495057;
     }
 </style>
+{% endblock %}
+
+{% block script %}
+<script>
+frappe.ready(function() {
+    // Handle plan selection
+    $('.select-plan').click(function() {
+        const plan = $(this).data('plan');
+        $('#selected-plan').val(plan);
+        $('.plan-card').removeClass('selected');
+        $(this).closest('.plan-card').addClass('selected');
+        $('#subscription-form').removeClass('d-none');
+        $('html, body').animate({
+            scrollTop: $("#subscription-form").offset().top - 100
+        }, 1000);
+    });
+
+    // Handle form submission
+    $('#create-subscription').on('submit', function(e) {
+        e.preventDefault();
+        
+        frappe.call({
+            method: 'zerp.www.subscribe.create_subscription',
+            args: {
+                plan: $('#selected-plan').val(),
+                subdomain: $('#subdomain').val()
+            },
+            callback: function(r) {
+                if (r.message.success) {
+                    frappe.show_alert({
+                        message: r.message.message,
+                        indicator: 'green'
+                    });
+                    // Redirect to success page or show next steps
+                    setTimeout(function() {
+                        window.location.href = '/subscription/success?subscription=' + r.message.subscription;
+                    }, 2000);
+                } else {
+                    frappe.show_alert({
+                        message: r.message.message,
+                        indicator: 'red'
+                    });
+                }
+            }
+        });
+    });
+
+    // If plan is preselected (from URL), show the form
+    if ($('#selected-plan').val()) {
+        $('#subscription-form').removeClass('d-none');
+        $('.plan-card').each(function() {
+            if ($(this).find('.select-plan').data('plan') === $('#selected-plan').val()) {
+                $(this).addClass('selected');
+            }
+        });
+    }
+});
+</script>
 {% endblock %}

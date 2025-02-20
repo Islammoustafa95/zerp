@@ -1,39 +1,61 @@
 import frappe
+from frappe import _
 
 def get_context(context):
     context.subscription_plans = get_subscription_plans()
     context.no_cache = 1
+    context.base_domain = "zaynerp.com"
+    if frappe.form_dict:
+        context.subdomain = frappe.form_dict.subdomain
+        context.selected_plan = frappe.form_dict.plan
 
 def get_subscription_plans():
-    # You can customize this function to fetch plans from your database
-    return [
-        {
-            "name": "Basic",
-            "price": "$9.99/month",
-            "features": [
-                "Feature 1",
-                "Feature 2",
-                "Feature 3"
-            ]
-        },
-        {
-            "name": "Professional",
-            "price": "$29.99/month",
-            "features": [
-                "All Basic features",
-                "Pro Feature 1",
-                "Pro Feature 2",
-                "Pro Feature 3"
-            ]
-        },
-        {
-            "name": "Enterprise",
-            "price": "$99.99/month",
-            "features": [
-                "All Professional features",
-                "Enterprise Feature 1",
-                "Enterprise Feature 2",
-                "Enterprise Feature 3"
-            ]
+    # Fetch actual subscription plans from the DocType
+    plans = frappe.get_all(
+        "Subscription Plan",
+        fields=["name", "plan_name", "price", "billing_interval", "features", "maximum_users", "maximum_space"],
+        filters={"enabled": 1},
+        order_by="price"
+    )
+    return plans
+
+@frappe.whitelist()
+def create_subscription():
+    try:
+        # Validate subdomain
+        subdomain = frappe.form_dict.subdomain
+        if not subdomain:
+            frappe.throw(_("Subdomain is required"))
+        
+        # Check if subdomain already exists
+        existing = frappe.db.exists("Subscription", {"subdomain": subdomain})
+        if existing:
+            frappe.throw(_("This subdomain is already taken. Please choose another one."))
+
+        # Get plan details
+        plan_name = frappe.form_dict.plan
+        plan = frappe.get_doc("Subscription Plan", plan_name)
+        
+        # Create subscription
+        subscription = frappe.get_doc({
+            "doctype": "Subscription",
+            "subdomain": subdomain,
+            "subscription_plan": plan_name,
+            "status": "Pending",
+            # Add other fields as needed
+        })
+        
+        subscription.insert(ignore_permissions=True)
+        
+        return {
+            "success": True,
+            "message": _("Subscription created successfully"),
+            "subscription": subscription.name
         }
-    ]
+        
+    except Exception as e:
+        frappe.log_error(frappe.get_traceback(), _("Subscription Creation Failed"))
+        return {
+            "success": False,
+            "message": str(e)
+        }
