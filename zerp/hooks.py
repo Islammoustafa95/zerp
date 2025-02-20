@@ -7,6 +7,7 @@ app_license = "mit"
 
 # Website Settings
 website_route_rules = [
+    {"from_route": "/", "to_route": "cshome"},  # Set as home page
     {"from_route": "/subscription", "to_route": "subscription"},
     {"from_route": "/subscription/register", "to_route": "subscription/register"},
     {"from_route": "/subscription/plans", "to_route": "subscription/plans"},
