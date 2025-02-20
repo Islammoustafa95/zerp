@@ -7,12 +7,14 @@ from frappe.utils import get_bench_path
 def create_site(subscription_name):
     """Create a new site for the subscription"""
     try:
-        frappe.db.commit()  # Commit any pending transactions
+        # Ensure clean state
+        frappe.db.rollback()
+        frappe.db.commit()
         
-        # Log the start
+        # Log the start with more context
         frappe.log_error(
-            message=f"Starting site creation process for {subscription_name}",
-            title="Site Creation Started"
+            message=f"Starting comprehensive site creation process for {subscription_name}",
+            title="Site Creation Comprehensive Start"
         )
         
         # Get subscription document with direct SQL to avoid transaction issues
@@ -27,166 +29,116 @@ def create_site(subscription_name):
             
         subscription = subscription_doc[0]
         
-        # Get settings
+        # Get settings with more comprehensive checks
         settings = frappe.get_single("Zerp Settings")
         if not settings:
             raise Exception("Zerp Settings not found")
             
-        # Basic validation
-        if not settings.mysql_root_password:
-            raise Exception("MySQL root password not configured in Zerp Settings")
-            
-        if not settings.base_domain:
-            raise Exception("Base domain not configured in Zerp Settings")
+        # Comprehensive validation
+        required_settings = [
+            'mysql_root_password', 
+            'base_domain', 
+            'server_ip',
+            'cloudflare_api_token',
+            'cloudflare_zone_id'
+        ]
         
-        # Validate Cloudflare settings if Cloudflare is to be used
-        use_cloudflare = getattr(settings, 'use_cloudflare', 0)
-        if use_cloudflare:
-            if not (getattr(settings, 'cloudflare_api_token', '') and 
-                    getattr(settings, 'cloudflare_zone_id', '')):
-                frappe.log_error(
-                    message="Cloudflare settings incomplete",
-                    title="Cloudflare Configuration Error"
-                )
-                use_cloudflare = 0
+        for setting in required_settings:
+            if not getattr(settings, setting, None):
+                raise Exception(f"{setting.replace('_', ' ').title()} not configured in Zerp Settings")
         
         # Prepare site URL
         site_name = f"{subscription.sub_domain}.{settings.base_domain}"
         
         # Get apps to install from subscription plan
         plan_apps = frappe.get_doc("Subscription Plan", subscription.plan)
-        apps_to_install = []  # Only apps from the plan
-        for app in plan_apps.plan_apps:
-            apps_to_install.append(app.app_name)
-                
-        # Log apps to be installed
-        frappe.log_error(
-            message=f"Will install these apps: {apps_to_install}",
-            title="Site Creation Apps"
-        )
+        apps_to_install = [app.app_name for app in plan_apps.plan_apps]
         
-        # Prepare site creation command (without apps)
+        # Comprehensive site creation process
         bench_path = get_bench_path()
-        create_site_cmd = [
-            "bench",
-            "new-site",
-            site_name,
-            "--admin-password", "admin",
-            "--mariadb-root-password", settings.mysql_root_password
+        
+        # Detailed site creation steps
+        steps = [
+            {
+                'name': 'New Site Creation',
+                'command': [
+                    "bench", "new-site", site_name,
+                    "--admin-password", "admin",
+                    "--mariadb-root-password", settings.mysql_root_password
+                ]
+            },
+            *[{
+                'name': f'Install App: {app}',
+                'command': f"bench --site {site_name} install-app {app}"
+            } for app in apps_to_install],
+            {
+                'name': 'Add Domain',
+                'command': f"bench setup add-domain {site_name}"
+            },
+            {
+                'name': 'Nginx Setup',
+                'command': "bench setup nginx --yes"
+            },
+            {
+                'name': 'Reload Nginx',
+                'command': "sudo -n service nginx reload"
+            }
         ]
-            
-        # Log the command (excluding sensitive info)
-        safe_command = create_site_cmd.copy()
-        safe_command[safe_command.index(settings.mysql_root_password)] = "****"
-        frappe.log_error(
-            message=f"Will execute: {' '.join(safe_command)}",
-            title="Site Creation Command"
-        )
         
-        # Execute site creation
-        process = subprocess.Popen(
-            create_site_cmd,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            cwd=bench_path
-        )
-        
-        stdout, stderr = process.communicate()
-        
-        # Log the output
-        frappe.log_error(
-            message=f"Site creation output:\nSTDOUT: {stdout.decode()}\nSTDERR: {stderr.decode()}",
-            title="Site Creation Output"
-        )
-        
-        if process.returncode != 0:
-            raise Exception(f"Site creation failed: {stderr.decode()}")
-            
-        # Install apps one by one
-        for app in apps_to_install:
-            install_app_cmd = f"bench --site {site_name} install-app {app}"
-            
-            frappe.log_error(
-                message=f"Installing app: {install_app_cmd}",
-                title="App Installation"
-            )
-            
-            process = subprocess.Popen(
-                install_app_cmd,
-                shell=True,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                cwd=bench_path
-            )
-            
-            stdout, stderr = process.communicate()
-            
-            # Log the output
-            frappe.log_error(
-                message=f"App {app} installation output:\nSTDOUT: {stdout.decode()}\nSTDERR: {stderr.decode()}",
-                title=f"App Installation: {app}"
-            )
-            
-            if process.returncode != 0:
-                raise Exception(f"Failed to install app {app}: {stderr.decode()}")
-        
-        # Setup Cloudflare DNS if enabled
-        if use_cloudflare:
+        # Execute steps with comprehensive error tracking
+        for step in steps:
             try:
-                cloudflare_response = setup_cloudflare_dns(
-                    subdomain=subscription.sub_domain, 
-                    cf_settings={
-                        'api_token': settings.cloudflare_api_token,
-                        'zone_id': settings.cloudflare_zone_id,
-                        'base_domain': settings.base_domain
-                    }
-                )
-            except Exception as cf_error:
+                if isinstance(step['command'], list):
+                    process = subprocess.Popen(
+                        step['command'],
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE,
+                        cwd=bench_path
+                    )
+                    stdout, stderr = process.communicate()
+                else:
+                    process = subprocess.Popen(
+                        step['command'],
+                        shell=True,
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE,
+                        cwd=bench_path
+                    )
+                    stdout, stderr = process.communicate()
+                
+                # Log detailed output
                 frappe.log_error(
-                    message=f"Cloudflare DNS setup failed: {str(cf_error)}",
-                    title="Cloudflare DNS Error"
+                    message=f"{step['name']} Output:\nSTDOUT: {stdout.decode()}\nSTDERR: {stderr.decode()}",
+                    title=f"Site Creation Step: {step['name']}"
                 )
-        
-        # Add domain to site
-        add_domain_cmd = f"bench setup add-domain {site_name}"
-        process = subprocess.Popen(
-            add_domain_cmd,
-            shell=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            cwd=bench_path
-        )
-        stdout, stderr = process.communicate()
-        
-        if process.returncode != 0:
-            frappe.log_error(
-                message=f"Domain addition failed: {stderr.decode()}",
-                title="Domain Addition Error"
-            )
-        
-        # Setup Nginx
-        nginx_setup_cmds = [
-            "bench setup nginx --yes",
-            "sudo -n service nginx reload"  # Added -n flag for non-interactive
-        ]
-        
-        for cmd in nginx_setup_cmds:
-            process = subprocess.Popen(
-                cmd,
-                shell=True,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                cwd=bench_path
-            )
-            stdout, stderr = process.communicate()
+                
+                if process.returncode != 0:
+                    raise Exception(f"{step['name']} failed: {stderr.decode()}")
             
-            if process.returncode != 0:
+            except Exception as step_error:
                 frappe.log_error(
-                    message=f"Nginx setup failed for command {cmd}: {stderr.decode()}",
-                    title="Nginx Setup Error"
+                    message=f"Step {step['name']} failed: {str(step_error)}",
+                    title=f"Site Creation Step Error: {step['name']}"
                 )
+                raise
         
-        # Update subscription status using frappe ORM
+        # Cloudflare DNS setup
+        try:
+            setup_cloudflare_dns(
+                subdomain=subscription.sub_domain, 
+                cf_settings={
+                    'api_token': settings.cloudflare_api_token,
+                    'zone_id': settings.cloudflare_zone_id,
+                    'base_domain': settings.base_domain
+                }
+            )
+        except Exception as cf_error:
+            frappe.log_error(
+                message=f"Cloudflare DNS setup failed: {str(cf_error)}",
+                title="Cloudflare DNS Error"
+            )
+        
+        # Update subscription status
         subscription_doc = frappe.get_doc("Subscription", subscription_name)
         subscription_doc.is_site_created = 1
         subscription_doc.site_url = f"https://{site_name}"
@@ -201,11 +153,27 @@ def create_site(subscription_name):
             title="Site Creation Success"
         )
         
+        return True
+    
     except Exception as e:
+        # Comprehensive error logging
         frappe.log_error(
-            message=f"Site creation failed for {subscription_name}: {str(e)}",
-            title="Site Creation Error"
+            message=f"Comprehensive site creation failed for {subscription_name}: {str(e)}\n{frappe.get_traceback()}",
+            title="Comprehensive Site Creation Error"
         )
+        
+        # Update subscription status to reflect failure
+        try:
+            subscription_doc = frappe.get_doc("Subscription", subscription_name)
+            subscription_doc.status = "Draft"  # Or another appropriate status
+            subscription_doc.save(ignore_permissions=True)
+            frappe.db.commit()
+        except Exception as update_error:
+            frappe.log_error(
+                message=f"Failed to update subscription status: {str(update_error)}",
+                title="Subscription Status Update Error"
+            )
+        
         raise
 
 def setup_cloudflare_dns(subdomain, cf_settings):
