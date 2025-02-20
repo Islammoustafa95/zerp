@@ -6,47 +6,54 @@ def get_context(context):
     context.no_cache = 1
     context.base_domain = "zaynerp.com"
     if frappe.form_dict:
-        context.subdomain = frappe.form_dict.subdomain
-        context.selected_plan = frappe.form_dict.plan
+        context.subdomain = frappe.form_dict.get('subdomain', '')
+        context.selected_plan = frappe.form_dict.get('plan', '')
 
 def get_subscription_plans():
-    # Fetch all subscription plans
+    # Fetch all subscription plans using only confirmed fields
     plans = frappe.get_all(
         "Subscription Plan", 
-        fields=["name", "plan_name", "plan_monthly_subscription", "plan_description"]
+        fields=["name", "plan_name", "plan_monthly_subscription", "plan_description"],
+        filters={"enabled": 1} if frappe.db.has_column("Subscription Plan", "enabled") else {}
     )
     
-    # Get apps for each plan
-    plan_docs = []
+    # Enrich plan data with apps
+    enriched_plans = []
     for plan in plans:
-        # Fetch the full document to get child table
-        plan_doc = frappe.get_doc("Subscription Plan", plan.name)
+        # Fetch full document to get child table
+        try:
+            plan_doc = frappe.get_doc("Subscription Plan", plan.name)
+            
+            # Prepare plan data
+            plan_data = {
+                "name": plan.name,
+                "plan_name": plan.plan_name,
+                "plan_monthly_subscription": plan.plan_monthly_subscription,
+                "plan_description": plan.plan_description,
+                "apps": []
+            }
+            
+            # Add apps if child table exists
+            if hasattr(plan_doc, 'plan_apps'):
+                plan_data['apps'] = [
+                    {"app_name": app.app_name} 
+                    for app in plan_doc.plan_apps 
+                    if hasattr(app, 'app_name')
+                ]
+            
+            enriched_plans.append(plan_data)
         
-        # Prepare plan data
-        plan_data = {
-            "name": plan.name,
-            "plan_name": plan.plan_name,
-            "plan_monthly_subscription": plan.plan_monthly_subscription,
-            "plan_description": plan.plan_description,
-            "apps": []
-        }
-        
-        # Add apps if they exist
-        if hasattr(plan_doc, 'plan_apps'):
-            plan_data['apps'] = [
-                {"app_name": app.app_name} 
-                for app in plan_doc.plan_apps
-            ]
-        
-        plan_docs.append(plan_data)
-        
-    return plan_docs
+        except Exception as e:
+            # Log any errors but continue processing other plans
+            frappe.log_error(f"Error processing plan {plan.name}: {str(e)}")
+    
+    return enriched_plans
 
 @frappe.whitelist()
 def create_subscription():
     try:
         # Validate subdomain
-        subdomain = frappe.form_dict.subdomain
+        subdomain = frappe.form_dict.get('subdomain', '').strip()
         if not subdomain:
             frappe.throw(_("Subdomain is required"))
         
@@ -56,7 +63,7 @@ def create_subscription():
             frappe.throw(_("This subdomain is already taken. Please choose another one."))
 
         # Get plan details
-        plan_name = frappe.form_dict.plan
+        plan_name = frappe.form_dict.get('plan', '')
         if not plan_name:
             frappe.throw(_("Please select a subscription plan"))
 
@@ -64,13 +71,17 @@ def create_subscription():
         user = frappe.session.user
         if user == 'Guest':
             frappe.throw(_("Please login to create a subscription"))
+        
+        # Validate plan exists
+        if not frappe.db.exists("Subscription Plan", plan_name):
+            frappe.throw(_("Selected plan does not exist"))
             
         # Create subscription
         subscription = frappe.get_doc({
             "doctype": "Subscription",
             "user": user,
             "sub_domain": subdomain,
-            "subscription_type": "Trial",  # You can modify this based on your requirements
+            "subscription_type": "Trial",
             "plan": plan_name,
             "start_date": frappe.utils.today(),
             "status": "Draft",

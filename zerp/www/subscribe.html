@@ -44,7 +44,7 @@
                     <div class="col-md-4">
                         <div class="plan-card {% if selected_plan == plan.name %}selected{% endif %}">
                             <h3>{{ plan.plan_name }}</h3>
-                            <div class="price">{{ plan.plan_monthly_subscription }}
+                            <div class="price">{{ plan.plan_monthly_subscription or 0 }}
                                 <span class="billing-interval">/month</span>
                             </div>
                             <div class="description">
@@ -53,9 +53,13 @@
                             <div class="apps">
                                 <h4>Included Apps:</h4>
                                 <ul>
-                                    {% for app in plan.apps %}
-                                    <li>{{ app.app_name }}</li>
-                                    {% endfor %}
+                                    {% if plan.apps %}
+                                        {% for app in plan.apps %}
+                                        <li>{{ app.app_name or 'Unnamed App' }}</li>
+                                        {% endfor %}
+                                    {% else %}
+                                        <li>No apps included</li>
+                                    {% endif %}
                                 </ul>
                             </div>
                             <button class="btn btn-primary select-plan" data-plan="{{ plan.name }}">
