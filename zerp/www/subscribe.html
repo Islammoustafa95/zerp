@@ -44,18 +44,18 @@
                     <div class="col-md-4">
                         <div class="plan-card {% if selected_plan == plan.name %}selected{% endif %}">
                             <h3>{{ plan.plan_name }}</h3>
-                            <div class="price">{{ plan.price }}
-                                <span class="billing-interval">/{{ plan.billing_interval }}</span>
+                            <div class="price">{{ frappe.format_value(plan.plan_monthly_subscription, {"fieldtype": "Currency"}) }}
+                                <span class="billing-interval">/month</span>
                             </div>
-                            <div class="features">
+                            <div class="description">
+                                {{ plan.plan_description or '' }}
+                            </div>
+                            <div class="apps">
+                                <h4>Included Apps:</h4>
                                 <ul>
-                                    <li><strong>{{ plan.maximum_users }}</strong> Users</li>
-                                    <li><strong>{{ plan.maximum_space }}</strong> Storage</li>
-                                    {% if plan.features %}
-                                    {% for feature in plan.features.split('\n') %}
-                                    <li>{{ feature }}</li>
+                                    {% for app in plan.apps %}
+                                    <li>{{ app.app_name }}</li>
                                     {% endfor %}
-                                    {% endif %}
                                 </ul>
                             </div>
                             <button class="btn btn-primary select-plan" data-plan="{{ plan.name }}">
@@ -104,13 +104,25 @@
         font-size: 16px;
         color: #666;
     }
-    .features ul {
+    .description {
+        margin: 20px 0;
+        color: #666;
+    }
+    .apps {
+        margin: 20px 0;
+        text-align: left;
+    }
+    .apps h4 {
+        font-size: 16px;
+        margin-bottom: 10px;
+    }
+    .apps ul {
         list-style: none;
         padding: 0;
-        margin: 20px 0;
+        margin: 0;
     }
-    .features li {
-        margin: 12px 0;
+    .apps li {
+        margin: 5px 0;
         color: #555;
     }
     .subscription-form {
