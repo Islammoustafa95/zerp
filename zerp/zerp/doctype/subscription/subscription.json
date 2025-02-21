@@ -17,6 +17,8 @@
   "is_site_created",
   "site_url",
   "status",
+  "comments_section",
+  "comments",
   "plan_details_section",
   "plan_name",
   "plan_monthly_subscription",
@@ -98,6 +100,17 @@
    "fieldtype": "Data",
    "label": "Site URL",
    "read_only": 1
+  },
+  {
+   "fieldname": "comments_section",
+   "fieldtype": "Section Break",
+   "label": "Comments"
+  },
+  {
+   "fieldname": "comments",
+   "fieldtype": "Table",
+   "label": "Comments",
+   "options": "Comment"
   },
   {
    "fieldname": "plan_details_section",

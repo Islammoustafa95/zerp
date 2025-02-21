@@ -6,34 +6,27 @@ from frappe.utils import get_bench_path
 
 def create_site(subscription_name):
     """Create a new site for the subscription"""
+    # Initialize log messages
+    log_messages = []
+
     try:
         # Ensure clean state
         frappe.db.rollback()
         frappe.db.commit()
         
-        # Log the start with more context
-        frappe.log_error(
-            message=f"Starting comprehensive site creation process for {subscription_name}",
-            title="Site Creation Comprehensive Start"
-        )
+        # Log the start
+        start_log = f"Starting site creation process for {subscription_name}"
+        log_messages.append(start_log)
+        frappe.log_error(message=start_log, title="Site Creation Start")
         
-        # Get subscription document with direct SQL to avoid transaction issues
-        subscription_doc = frappe.db.sql("""
-            SELECT name, sub_domain, plan, user
-            FROM `tabSubscription`
-            WHERE name = %s
-        """, subscription_name, as_dict=1)
+        # Get subscription document
+        subscription_doc = frappe.get_doc("Subscription", subscription_name)
         
-        if not subscription_doc:
-            raise Exception(f"Subscription {subscription_name} not found in database")
-            
-        subscription = subscription_doc[0]
-        
-        # Get settings with more comprehensive checks
+        # Get settings
         settings = frappe.get_single("Zerp Settings")
         if not settings:
             raise Exception("Zerp Settings not found")
-            
+        
         # Comprehensive validation
         required_settings = [
             'mysql_root_password', 
@@ -48,11 +41,13 @@ def create_site(subscription_name):
                 raise Exception(f"{setting.replace('_', ' ').title()} not configured in Zerp Settings")
         
         # Prepare site URL
-        site_name = f"{subscription.sub_domain}.{settings.base_domain}"
+        site_name = f"{subscription_doc.sub_domain}.{settings.base_domain}"
+        log_messages.append(f"Site URL prepared: {site_name}")
         
         # Get apps to install from subscription plan
-        plan_apps = frappe.get_doc("Subscription Plan", subscription.plan)
+        plan_apps = frappe.get_doc("Subscription Plan", subscription_doc.plan)
         apps_to_install = [app.app_name for app in plan_apps.plan_apps]
+        log_messages.append(f"Apps to install: {apps_to_install}")
         
         # Comprehensive site creation process
         bench_path = get_bench_path()
@@ -106,66 +101,76 @@ def create_site(subscription_name):
                     )
                     stdout, stderr = process.communicate()
                 
-                # Log detailed output
-                frappe.log_error(
-                    message=f"{step['name']} Output:\nSTDOUT: {stdout.decode()}\nSTDERR: {stderr.decode()}",
-                    title=f"Site Creation Step: {step['name']}"
-                )
+                # Log step output
+                step_log = f"{step['name']} Output:\nSTDOUT: {stdout.decode()}\nSTDERR: {stderr.decode()}"
+                log_messages.append(step_log)
                 
                 if process.returncode != 0:
                     raise Exception(f"{step['name']} failed: {stderr.decode()}")
             
             except Exception as step_error:
-                frappe.log_error(
-                    message=f"Step {step['name']} failed: {str(step_error)}",
-                    title=f"Site Creation Step Error: {step['name']}"
-                )
+                error_log = f"Step {step['name']} failed: {str(step_error)}"
+                log_messages.append(error_log)
+                frappe.log_error(message=error_log, title=f"Site Creation Step Error: {step['name']}")
                 raise
         
         # Cloudflare DNS setup
         try:
-            setup_cloudflare_dns(
-                subdomain=subscription.sub_domain, 
+            cloudflare_result = setup_cloudflare_dns(
+                subdomain=subscription_doc.sub_domain, 
                 cf_settings={
                     'api_token': settings.cloudflare_api_token,
                     'zone_id': settings.cloudflare_zone_id,
                     'base_domain': settings.base_domain
                 }
             )
+            log_messages.append(f"Cloudflare DNS setup successful: {cloudflare_result}")
         except Exception as cf_error:
-            frappe.log_error(
-                message=f"Cloudflare DNS setup failed: {str(cf_error)}",
-                title="Cloudflare DNS Error"
-            )
+            cf_error_log = f"Cloudflare DNS setup failed: {str(cf_error)}"
+            log_messages.append(cf_error_log)
+            frappe.log_error(message=cf_error_log, title="Cloudflare DNS Error")
         
         # Update subscription status
-        subscription_doc = frappe.get_doc("Subscription", subscription_name)
         subscription_doc.is_site_created = 1
         subscription_doc.site_url = f"https://{site_name}"
+        subscription_doc.status = "Active"
+        
+        # Add comments with logs
+        for log_message in log_messages:
+            subscription_doc.append("comments", {
+                "comment": log_message,
+                "comment_type": "Comment"
+            })
+        
         subscription_doc.save(ignore_permissions=True)
         frappe.db.commit()
         
         # Send email notification
-        send_success_email(subscription, site_name)
+        send_success_email(subscription_doc, site_name)
         
-        frappe.log_error(
-            message=f"Site created successfully: {site_name}",
-            title="Site Creation Success"
-        )
+        # Final success log
+        success_log = f"Site created successfully: {site_name}"
+        log_messages.append(success_log)
+        frappe.log_error(message=success_log, title="Site Creation Success")
         
         return True
     
     except Exception as e:
         # Comprehensive error logging
-        frappe.log_error(
-            message=f"Comprehensive site creation failed for {subscription_name}: {str(e)}\n{frappe.get_traceback()}",
-            title="Comprehensive Site Creation Error"
-        )
+        error_log = f"Site creation failed for {subscription_name}: {str(e)}\n{frappe.get_traceback()}"
+        frappe.log_error(message=error_log, title="Site Creation Error")
         
         # Update subscription status to reflect failure
         try:
             subscription_doc = frappe.get_doc("Subscription", subscription_name)
-            subscription_doc.status = "Draft"  # Or another appropriate status
+            subscription_doc.status = "Draft"
+            
+            # Add error logs as comments
+            subscription_doc.append("comments", {
+                "comment": error_log,
+                "comment_type": "Error"
+            })
+            
             subscription_doc.save(ignore_permissions=True)
             frappe.db.commit()
         except Exception as update_error:
@@ -184,7 +189,8 @@ def setup_cloudflare_dns(subdomain, cf_settings):
     }
     
     # Get server IP 
-    server_ip = getattr(frappe.get_single("Zerp Settings"), 'server_ip', None)
+    settings = frappe.get_single("Zerp Settings")
+    server_ip = getattr(settings, 'server_ip', None)
     if not server_ip:
         raise Exception("Server IP not configured in Zerp Settings")
     
@@ -213,22 +219,22 @@ def setup_cloudflare_dns(subdomain, cf_settings):
         )
         raise
 
-def send_success_email(subscription, site_name):
+def send_success_email(subscription_doc, site_name):
     """Send success email to user"""
     try:
         frappe.sendmail(
-            recipients=[subscription.user],
+            recipients=[subscription_doc.user],
             subject="Your Site is Ready!",
             template="new_site_created",
             args={
                 "site_url": f"https://{site_name}",
                 "username": "Administrator",
                 "password": "admin",
-                "user": subscription.user
+                "user": subscription_doc.user
             }
         )
     except Exception as e:
         frappe.log_error(
-            message=f"Failed to send email for {subscription.name}: {str(e)}",
+            message=f"Failed to send email for {subscription_doc.name}: {str(e)}",
             title="Email Sending Error"
         )
