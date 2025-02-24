@@ -140,13 +140,10 @@ def create_site(subscription_name):
         
         # Add comments with logs
         for log_message in log_messages:
-            frappe.get_doc({
-                "doctype": "Comment",
-                "comment_type": "Info",
-                "reference_doctype": "Subscription",
-                "reference_name": subscription_doc.name,
-                "content": log_message
-            }).insert(ignore_permissions=True)
+            subscription_doc.append("comments", {
+                "comment": log_message,
+                "comment_type": "Comment"
+            })
         
         subscription_doc.save(ignore_permissions=True)
         frappe.db.commit()
@@ -172,13 +169,10 @@ def create_site(subscription_name):
             subscription_doc.status = "Draft"
             
             # Add error logs as comments
-            frappe.get_doc({
-                "doctype": "Comment",
-                "comment_type": "Error",
-                "reference_doctype": "Subscription",
-                "reference_name": subscription_name,
-                "content": error_log
-            }).insert(ignore_permissions=True)
+            subscription_doc.append("comments", {
+                "comment": error_log,
+                "comment_type": "Error"
+            })
             
             subscription_doc.save(ignore_permissions=True)
             frappe.db.commit()
