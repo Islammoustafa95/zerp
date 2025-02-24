@@ -15,13 +15,16 @@ def get_context(context):
 
 def get_subscription_plans():
     try:
-        # Fetch subscription plans with only the required fields
-        plans = frappe.get_all(
+        return frappe.get_all(
             "Subscription Plan",
-            fields=["name", "plan_name", "plan_monthly_subscription", "plan_description"],
+            fields=[
+                "name",
+                "plan_name",
+                "plan_monthly_subscription",
+                "plan_description"
+            ],
             order_by="plan_monthly_subscription asc"
         )
-        return plans
     except Exception as e:
         frappe.log_error(f"Error in get_subscription_plans: {str(e)}")
         return []
@@ -40,9 +43,8 @@ def create_subscription():
             }
             
         # Get form data
-        data = frappe.form_dict
-        subdomain = data.get('subdomain', '').strip()
-        plan_name = data.get('plan', '')
+        subdomain = frappe.form_dict.get('subdomain', '').strip()
+        plan_name = frappe.form_dict.get('plan', '')
         
         # Validate subdomain
         if not subdomain:
