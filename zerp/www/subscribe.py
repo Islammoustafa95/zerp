@@ -1,5 +1,8 @@
 import frappe
 from frappe import _
+import json
+
+no_cache = 1
 
 def get_context(context):
     context.subscription_plans = get_subscription_plans()
@@ -12,41 +15,46 @@ def get_context(context):
         context.selected_plan = frappe.form_dict.get('plan', '')
 
 def get_subscription_plans():
-    # Fetch all subscription plans using only confirmed fields
-    plans = frappe.get_all(
-        "Subscription Plan", 
-        fields=["name", "plan_name", "plan_monthly_subscription", "plan_description"]
-    )
-    
-    # Enrich plan data with apps
-    enriched_plans = []
-    for plan in plans:
-        # Prepare plan data
-        plan_data = {
-            "name": plan.name,
-            "plan_name": plan.plan_name,
-            "plan_monthly_subscription": plan.plan_monthly_subscription,
-            "plan_description": plan.plan_description,
-            "apps": []
-        }
+    try:
+        # Fetch all subscription plans using only confirmed fields
+        plans = frappe.get_all(
+            "Subscription Plan", 
+            fields=["name", "plan_name", "plan_monthly_subscription", "plan_description"],
+            order_by="plan_monthly_subscription asc"
+        )
         
-        # Fetch apps separately to avoid column issues
-        try:
-            plan_apps = frappe.get_all(
-                "Subscription Plan App", 
-                filters={"parent": plan.name, "parenttype": "Subscription Plan", "parentfield": "plan_apps"},
-                fields=["app_name"]
-            )
-            plan_data['apps'] = [{"app_name": app.app_name} for app in plan_apps]
-        except Exception as e:
-            frappe.log_error(f"Error fetching apps for plan {plan.name}: {str(e)}")
+        # Enrich plan data with apps
+        enriched_plans = []
+        for plan in plans:
+            # Prepare plan data
+            plan_data = {
+                "name": plan.name,
+                "plan_name": plan.plan_name,
+                "plan_monthly_subscription": plan.plan_monthly_subscription,
+                "plan_description": plan.plan_description,
+                "apps": []
+            }
+            
+            # Fetch apps separately to avoid column issues
+            try:
+                plan_apps = frappe.get_all(
+                    "Subscription Plan App", 
+                    filters={"parent": plan.name, "parenttype": "Subscription Plan"},
+                    fields=["app_name"]
+                )
+                plan_data['apps'] = [{"app_name": app.app_name} for app in plan_apps]
+            except Exception as e:
+                frappe.log_error(f"Error fetching apps for plan {plan.name}: {str(e)}")
+            
+            enriched_plans.append(plan_data)
         
-        enriched_plans.append(plan_data)
-    
-    return enriched_plans
+        return enriched_plans
+    except Exception as e:
+        frappe.log_error(f"Error in get_subscription_plans: {str(e)}")
+        return []
 
 @frappe.whitelist(allow_guest=True)
-def create_subscription(plan=None, subdomain=None):
+def create_subscription():
     try:
         # Check if user is logged in
         if frappe.session.user == 'Guest':
@@ -57,6 +65,11 @@ def create_subscription(plan=None, subdomain=None):
                 "login_url": "/login",
                 "signup_url": "/login#signup"
             }
+            
+        # Get form data
+        data = frappe.form_dict
+        subdomain = data.get('subdomain', '').strip()
+        plan_name = data.get('plan', '')
         
         # Validate subdomain
         subdomain = frappe.form_dict.get('subdomain', '').strip()

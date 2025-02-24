@@ -170,9 +170,10 @@ frappe.ready(function() {
         
         frappe.call({
             method: 'zerp.www.subscribe.create_subscription',
+            type: "POST",
             args: {
-                plan: $('#selected-plan').val(),
-                subdomain: $('#subdomain').val()
+                subdomain: $('#subdomain').val(),
+                plan: $('#selected-plan').val()
             },
             callback: function(r) {
                 if (r.message.success) {
