@@ -17,8 +17,7 @@
   "is_site_created",
   "site_url",
   "status",
-  "comments_section",
-  "comments",
+
   "plan_details_section",
   "plan_name",
   "plan_monthly_subscription",
@@ -110,7 +109,7 @@
    "fieldname": "comments",
    "fieldtype": "Table",
    "label": "Comments",
-   "options": "Comment"
+   "options": "Subscription Comment"
   },
   {
    "fieldname": "plan_details_section",

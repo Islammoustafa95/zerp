@@ -115,20 +115,23 @@ def create_site(subscription_name):
                 raise
         
         # Cloudflare DNS setup
-        try:
-            cloudflare_result = setup_cloudflare_dns(
-                subdomain=subscription_doc.sub_domain, 
-                cf_settings={
-                    'api_token': settings.cloudflare_api_token,
-                    'zone_id': settings.cloudflare_zone_id,
-                    'base_domain': settings.base_domain
-                }
-            )
-            log_messages.append(f"Cloudflare DNS setup successful: {cloudflare_result}")
-        except Exception as cf_error:
-            cf_error_log = f"Cloudflare DNS setup failed: {str(cf_error)}"
-            log_messages.append(cf_error_log)
-            frappe.log_error(message=cf_error_log, title="Cloudflare DNS Error")
+        if getattr(settings, 'use_cloudflare', 0):
+            try:
+                cloudflare_result = setup_cloudflare_dns(
+                    subdomain=subscription_doc.sub_domain, 
+                    cf_settings={
+                        'api_token': settings.cloudflare_api_token,
+                        'zone_id': settings.cloudflare_zone_id,
+                        'base_domain': settings.base_domain
+                    }
+                )
+                log_messages.append(f"Cloudflare DNS setup successful: {cloudflare_result}")
+            except Exception as cf_error:
+                cf_error_log = f"Cloudflare DNS setup failed: {str(cf_error)}"
+                log_messages.append(cf_error_log)
+                frappe.log_error(message=cf_error_log, title="Cloudflare DNS Error")
+        else:
+            log_messages.append("Cloudflare integration is disabled in settings")
         
         # Update subscription status
         subscription_doc.is_site_created = 1
@@ -137,10 +140,13 @@ def create_site(subscription_name):
         
         # Add comments with logs
         for log_message in log_messages:
-            subscription_doc.append("comments", {
-                "comment": log_message,
-                "comment_type": "Comment"
-            })
+            frappe.get_doc({
+                "doctype": "Comment",
+                "comment_type": "Info",
+                "reference_doctype": "Subscription",
+                "reference_name": subscription_doc.name,
+                "content": log_message
+            }).insert(ignore_permissions=True)
         
         subscription_doc.save(ignore_permissions=True)
         frappe.db.commit()
@@ -166,10 +172,13 @@ def create_site(subscription_name):
             subscription_doc.status = "Draft"
             
             # Add error logs as comments
-            subscription_doc.append("comments", {
-                "comment": error_log,
-                "comment_type": "Error"
-            })
+            frappe.get_doc({
+                "doctype": "Comment",
+                "comment_type": "Error",
+                "reference_doctype": "Subscription",
+                "reference_name": subscription_name,
+                "content": error_log
+            }).insert(ignore_permissions=True)
             
             subscription_doc.save(ignore_permissions=True)
             frappe.db.commit()
