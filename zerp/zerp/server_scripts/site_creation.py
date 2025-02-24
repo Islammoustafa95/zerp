@@ -127,12 +127,24 @@ def create_site(subscription_name):
                         'base_domain': settings.base_domain
                     }
                 )
-                log_messages.append(f"Cloudflare DNS setup successful: {cloudflare_result}")
+                
+                # Log Cloudflare setup details
+                log_messages.append(f"Cloudflare DNS setup result: {cloudflare_result}")
+                
+                # Add Cloudflare log messages to subscription comments
+                for log_msg in cloudflare_result.get('log_messages', []):
+                    subscription_doc.add_comment('Comment', log_msg)
+            
             except Exception as cf_error:
                 cf_error_log = f"Cloudflare DNS setup failed: {str(cf_error)}"
                 log_messages.append(cf_error_log)
                 frappe.log_error(message=cf_error_log, title="Cloudflare DNS Error")
-                # Don't raise exception here, continue with site creation
+                
+                # Optionally, you can choose to continue or stop the process
+                # Here, we'll continue but mark it in the logs
+                subscription_doc.add_comment('Comment', cf_error_log)
+        else:
+            log_messages.append("Cloudflare integration is disabled or not fully configured")
         
         # Update subscription status
         subscription_doc.db_set('is_site_created', 1)
@@ -167,40 +179,124 @@ def create_site(subscription_name):
         raise
 
 def setup_cloudflare_dns(subdomain, cf_settings):
-    """Setup Cloudflare DNS record"""
-    headers = {
-        "Authorization": f"Bearer {cf_settings['api_token']}",
-        "Content-Type": "application/json"
-    }
-    
-    # Get server IP 
-    settings = frappe.get_single("Zerp Settings")
-    server_ip = settings.server_ip
-    
-    data = {
-        "type": "A",
-        "name": subdomain,
-        "content": server_ip,
-        "ttl": 1,
-        "proxied": True
-    }
-    
-    url = f"https://api.cloudflare.com/client/v4/zones/{cf_settings['zone_id']}/dns_records"
+    """Setup Cloudflare DNS record with extensive logging"""
+    # Extensive logging setup
+    log_messages = []
     
     try:
-        response = requests.post(url, headers=headers, json=data)
-        response_data = response.json()
+        # Validate input parameters
+        if not all([subdomain, cf_settings.get('api_token'), cf_settings.get('zone_id')]):
+            raise ValueError("Missing required Cloudflare configuration parameters")
         
-        if not response_data.get('success'):
-            raise Exception(f"Cloudflare DNS setup failed: {response_data.get('errors')}")
+        # Get server IP 
+        settings = frappe.get_single("Zerp Settings")
+        server_ip = settings.server_ip
         
-        return response_data
+        if not server_ip:
+            raise ValueError("Server IP not configured in Zerp Settings")
+        
+        # Log initial parameters
+        log_messages.append(f"Cloudflare DNS Setup Parameters:")
+        log_messages.append(f"Subdomain: {subdomain}")
+        log_messages.append(f"Base Domain: {cf_settings.get('base_domain')}")
+        log_messages.append(f"Server IP: {server_ip}")
+        
+        # Prepare Cloudflare API request
+        headers = {
+            "Authorization": f"Bearer {cf_settings['api_token']}",
+            "Content-Type": "application/json"
+        }
+        
+        # Prepare DNS record data
+        data = {
+            "type": "A",
+            "name": subdomain,
+            "content": server_ip,
+            "ttl": 1,
+            "proxied": True
+        }
+        
+        # Construct full domain for logging
+        full_domain = f"{subdomain}.{cf_settings.get('base_domain')}"
+        log_messages.append(f"Full Domain: {full_domain}")
+        
+        # Cloudflare API endpoint
+        url = f"https://api.cloudflare.com/client/v4/zones/{cf_settings['zone_id']}/dns_records"
+        log_messages.append(f"Cloudflare API Endpoint: {url}")
+        
+        # Perform API request with detailed logging
+        try:
+            import requests
+            
+            # Log request details
+            log_messages.append("Sending Cloudflare DNS Record Creation Request")
+            log_messages.append(f"Request Headers: {headers}")
+            log_messages.append(f"Request Data: {data}")
+            
+            # Make the API request
+            response = requests.post(url, headers=headers, json=data)
+            
+            # Log response details
+            log_messages.append(f"Response Status Code: {response.status_code}")
+            log_messages.append(f"Response Headers: {response.headers}")
+            
+            # Parse response
+            response_data = response.json()
+            log_messages.append(f"Response JSON: {response_data}")
+            
+            # Check for success
+            if not response_data.get('success', False):
+                # Log detailed error
+                log_messages.append("Cloudflare API Error:")
+                log_messages.append(f"Errors: {response_data.get('errors', 'No specific errors')}")
+                log_messages.append(f"Messages: {response_data.get('messages', 'No messages')}")
+                
+                # Check for specific error conditions
+                errors = response_data.get('errors', [])
+                for error in errors:
+                    # Check for duplicate record error
+                    if error.get('code') == 81057:
+                        log_messages.append("DNS record already exists. Skipping creation.")
+                        return {
+                            "success": True,
+                            "message": "DNS record already exists",
+                            "log_messages": log_messages
+                        }
+                
+                # Raise exception for other errors
+                raise Exception(f"Cloudflare DNS setup failed: {errors}")
+            
+            # Successful creation
+            log_messages.append("Cloudflare DNS record created successfully")
+            return {
+                "success": True,
+                "message": "DNS record created",
+                "log_messages": log_messages
+            }
+        
+        except requests.RequestException as req_error:
+            # Network-level errors
+            log_messages.append(f"Network Error: {str(req_error)}")
+            raise
+        
+        except Exception as api_error:
+            # Other unexpected errors
+            log_messages.append(f"Unexpected Error: {str(api_error)}")
+            raise
+    
     except Exception as e:
+        # Final catch-all error handling
+        error_message = f"Cloudflare DNS Setup Failed: {str(e)}"
+        log_messages.append(error_message)
+        
+        # Log the full error
         frappe.log_error(
-            message=f"Cloudflare API Error: {str(e)}",
+            message="\n".join(log_messages),
             title="Cloudflare DNS Setup Error"
         )
-        raise
+        
+        # Re-raise the exception
+        raise Exception(error_message)
 
 def send_success_email(subscription_doc, site_name):
     """Send success email to user"""
