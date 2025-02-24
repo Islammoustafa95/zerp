@@ -13,39 +13,33 @@ def get_subscription_plans():
     # Fetch all subscription plans using only confirmed fields
     plans = frappe.get_all(
         "Subscription Plan", 
-        fields=["name", "plan_name", "plan_monthly_subscription", "plan_description"],
-        filters={"enabled": 1} if frappe.db.has_column("Subscription Plan", "enabled") else {}
+        fields=["name", "plan_name", "plan_monthly_subscription", "plan_description"]
     )
     
     # Enrich plan data with apps
     enriched_plans = []
     for plan in plans:
-        # Fetch full document to get child table
-        try:
-            plan_doc = frappe.get_doc("Subscription Plan", plan.name)
-            
-            # Prepare plan data
-            plan_data = {
-                "name": plan.name,
-                "plan_name": plan.plan_name,
-                "plan_monthly_subscription": plan.plan_monthly_subscription,
-                "plan_description": plan.plan_description,
-                "apps": []
-            }
-            
-            # Add apps if child table exists
-            if hasattr(plan_doc, 'plan_apps'):
-                plan_data['apps'] = [
-                    {"app_name": app.app_name} 
-                    for app in plan_doc.plan_apps 
-                    if hasattr(app, 'app_name')
-                ]
-            
-            enriched_plans.append(plan_data)
+        # Prepare plan data
+        plan_data = {
+            "name": plan.name,
+            "plan_name": plan.plan_name,
+            "plan_monthly_subscription": plan.plan_monthly_subscription,
+            "plan_description": plan.plan_description,
+            "apps": []
+        }
         
+        # Fetch apps separately to avoid column issues
+        try:
+            plan_apps = frappe.get_all(
+                "Subscription Plan App", 
+                filters={"parent": plan.name, "parenttype": "Subscription Plan", "parentfield": "plan_apps"},
+                fields=["app_name"]
+            )
+            plan_data['apps'] = [{"app_name": app.app_name} for app in plan_apps]
         except Exception as e:
-            # Log any errors but continue processing other plans
-            frappe.log_error(f"Error processing plan {plan.name}: {str(e)}")
+            frappe.log_error(f"Error fetching apps for plan {plan.name}: {str(e)}")
+        
+        enriched_plans.append(plan_data)
     
     return enriched_plans
 
