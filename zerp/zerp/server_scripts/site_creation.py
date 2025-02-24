@@ -80,7 +80,7 @@ def create_site(subscription_name):
             },
             {
                 'name': 'Reload Nginx',
-                'command': ["sudo", "-n", "service", "nginx", "reload"]
+                'command': ["sudo", "service", "nginx", "reload"]
             }
         ])
         
@@ -93,7 +93,14 @@ def create_site(subscription_name):
                     stderr=subprocess.PIPE,
                     cwd=bench_path
                 )
-                stdout, stderr = process.communicate()
+                
+                # Add timeout to prevent hanging
+                try:
+                    stdout, stderr = process.communicate(timeout=300)  # 5 minutes timeout per step
+                except subprocess.TimeoutExpired:
+                    process.kill()
+                    stdout, stderr = process.communicate()
+                    raise Exception(f"Command timed out after 300 seconds")
                 
                 # Log step output
                 step_log = f"{step['name']} Output:\nSTDOUT: {stdout.decode()}\nSTDERR: {stderr.decode()}"
@@ -101,7 +108,7 @@ def create_site(subscription_name):
                 frappe.log_error(message=step_log, title=f"Site Creation Step: {step['name']}")
                 
                 if process.returncode != 0:
-                    raise Exception(f"{step['name']} failed: {stderr.decode()}")
+                    raise Exception(f"{step['name']} failed with return code {process.returncode}: {stderr.decode()}")
             
             except Exception as step_error:
                 error_log = f"Step {step['name']} failed: {str(step_error)}"
