@@ -72,7 +72,7 @@ def create_site(subscription_name):
         steps.extend([
             {
                 'name': 'Add Domain',
-                'command': ["bench", "setup", "add-domain", site_name]
+                'command': ["bench", "setup", "add-domain", site_name, "--site", site_name]
             },
             {
                 'name': 'Nginx Setup',
@@ -87,31 +87,68 @@ def create_site(subscription_name):
         # Execute steps
         for step in steps:
             try:
+                # Use Popen with more comprehensive error handling
                 process = subprocess.Popen(
                     step['command'],
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
+                    stdin=subprocess.PIPE,  # Add stdin to prevent potential blocking
+                    universal_newlines=True,  # Use text mode for easier input/output handling
                     cwd=bench_path
                 )
                 
-                # Add timeout to prevent hanging
+                # Attempt to read output without hanging
                 try:
-                    stdout, stderr = process.communicate(timeout=300)  # 5 minutes timeout per step
+                    # Use communicate with timeout and input
+                    stdout, stderr = process.communicate(input='\n', timeout=600)  # 10 minutes timeout
                 except subprocess.TimeoutExpired:
+                    # If timeout occurs, kill the process
                     process.kill()
                     stdout, stderr = process.communicate()
-                    raise Exception(f"Command timed out after 300 seconds")
+                    
+                    # Log detailed timeout information
+                    timeout_log = (
+                        f"Command timed out: {step['command']}\n"
+                        f"STDOUT: {stdout}\n"
+                        f"STDERR: {stderr}"
+                    )
+                    frappe.log_error(message=timeout_log, title=f"Timeout in {step['name']}")
+                    
+                    # Check if process is still running and force kill
+                    if process.poll() is None:
+                        process.terminate()
+                        try:
+                            process.wait(timeout=10)
+                        except subprocess.TimeoutExpired:
+                            process.kill()
                 
-                # Log step output
-                step_log = f"{step['name']} Output:\nSTDOUT: {stdout.decode()}\nSTDERR: {stderr.decode()}"
+                # Log command output
+                step_log = (
+                    f"{step['name']} Command: {' '.join(step['command'])}\n"
+                    f"STDOUT: {stdout}\n"
+                    f"STDERR: {stderr}\n"
+                    f"Return Code: {process.returncode}"
+                )
                 log_messages.append(step_log)
                 frappe.log_error(message=step_log, title=f"Site Creation Step: {step['name']}")
                 
+                # Check return code
                 if process.returncode != 0:
-                    raise Exception(f"{step['name']} failed with return code {process.returncode}: {stderr.decode()}")
+                    # Detailed error logging
+                    error_details = (
+                        f"Command failed: {step['command']}\n"
+                        f"Return Code: {process.returncode}\n"
+                        f"STDOUT: {stdout}\n"
+                        f"STDERR: {stderr}"
+                    )
+                    raise Exception(error_details)
             
             except Exception as step_error:
-                error_log = f"Step {step['name']} failed: {str(step_error)}"
+                # Comprehensive error handling
+                error_log = (
+                    f"Step {step['name']} failed: {str(step_error)}\n"
+                    f"Command: {step['command']}"
+                )
                 log_messages.append(error_log)
                 frappe.log_error(message=error_log, title=f"Site Creation Step Error: {step['name']}")
                 raise
