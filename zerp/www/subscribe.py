@@ -5,6 +5,8 @@ def get_context(context):
     context.subscription_plans = get_subscription_plans()
     context.no_cache = 1
     context.base_domain = "zaynerp.com"
+    context.is_user_logged_in = frappe.session.user != 'Guest'
+    
     if frappe.form_dict:
         context.subdomain = frappe.form_dict.get('subdomain', '')
         context.selected_plan = frappe.form_dict.get('plan', '')
@@ -43,9 +45,19 @@ def get_subscription_plans():
     
     return enriched_plans
 
-@frappe.whitelist()
-def create_subscription():
+@frappe.whitelist(allow_guest=True)
+def create_subscription(plan=None, subdomain=None):
     try:
+        # Check if user is logged in
+        if frappe.session.user == 'Guest':
+            return {
+                "success": False,
+                "message": _("Please login to create a subscription"),
+                "requires_login": True,
+                "login_url": "/login",
+                "signup_url": "/login#signup"
+            }
+        
         # Validate subdomain
         subdomain = frappe.form_dict.get('subdomain', '').strip()
         if not subdomain:
@@ -60,16 +72,14 @@ def create_subscription():
         plan_name = frappe.form_dict.get('plan', '')
         if not plan_name:
             frappe.throw(_("Please select a subscription plan"))
-
-        # Get current user
-        user = frappe.session.user
-        if user == 'Guest':
-            frappe.throw(_("Please login to create a subscription"))
         
         # Validate plan exists
         if not frappe.db.exists("Subscription Plan", plan_name):
             frappe.throw(_("Selected plan does not exist"))
-            
+        
+        # Get current user
+        user = frappe.session.user
+        
         # Create subscription
         subscription = frappe.get_doc({
             "doctype": "Subscription",

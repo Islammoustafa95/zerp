@@ -185,10 +185,29 @@ frappe.ready(function() {
                         window.location.href = '/my_subscriptions';
                     }, 2000);
                 } else {
-                    frappe.show_alert({
-                        message: r.message.message,
-                        indicator: 'red'
-                    });
+                    if (r.message.requires_login) {
+                        // Show login/signup dialog
+                        const loginHtml = `
+                            <div class="text-center">
+                                <p class="mb-4">${r.message.message}</p>
+                                <div class="d-flex justify-content-center">
+                                    <a href="${r.message.login_url}" class="btn btn-primary mx-2">Login</a>
+                                    <a href="${r.message.signup_url}" class="btn btn-outline-primary mx-2">Sign Up</a>
+                                </div>
+                            </div>
+                        `;
+                        
+                        frappe.msgprint({
+                            title: 'Authentication Required',
+                            message: loginHtml,
+                            indicator: 'blue'
+                        });
+                    } else {
+                        frappe.show_alert({
+                            message: r.message.message,
+                            indicator: 'red'
+                        });
+                    }
                 }
             }
         });
