@@ -50,18 +50,6 @@
                             <div class="description">
                                 {{ plan.plan_description or '' }}
                             </div>
-                            <div class="apps">
-                                <h4>Included Apps:</h4>
-                                <ul>
-                                    {% if plan.apps %}
-                                        {% for app in plan.apps %}
-                                        <li>{{ app.app_name or 'Unnamed App' }}</li>
-                                        {% endfor %}
-                                    {% else %}
-                                        <li>No apps included</li>
-                                    {% endif %}
-                                </ul>
-                            </div>
                             <button class="btn btn-primary select-plan" data-plan="{{ plan.name }}">
                                 Select Plan
                             </button>
