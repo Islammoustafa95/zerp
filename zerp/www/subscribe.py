@@ -6,7 +6,7 @@ import json
 no_cache = 1
 
 # Initialize Stripe with the secret key
-stripe.api_key = "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"
+stripe.api_key = "#"
 
 def get_context(context):
     context.subscription_plans = get_subscription_plans()
