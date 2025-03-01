@@ -17,6 +17,12 @@
   "is_site_created",
   "site_url",
   "status",
+  "payment_section",
+  "payment_id",
+  "payment_status",
+  "column_break_payment",
+  "payment_amount",
+  "payment_date",
 
   "plan_details_section",
   "plan_name",
