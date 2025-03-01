@@ -158,9 +158,22 @@ frappe.ready(function() {
     // Handle subscription cancellation
     $('.cancel-subscription').on('click', function() {
         const subscriptionId = $(this).data('subscription');
+        const siteUrl = $(this).closest('tr').find('.site-url').text().trim();
+        
+        // Create a more detailed confirmation dialog
         frappe.confirm(
-            'Are you sure you want to cancel this subscription?',
+            `<div class="text-center">
+                <div class="mb-3">
+                    <i class="fa fa-exclamation-triangle fa-3x text-warning"></i>
+                </div>
+                <h4>Cancel Subscription</h4>
+                <p class="text-danger"><strong>WARNING: This action cannot be undone!</strong></p>
+                <p>This will permanently delete your site and all its data.</p>
+                <p>Are you absolutely sure you want to cancel your subscription for:</p>
+                <p><strong>${siteUrl}</strong></p>
+            </div>`,
             function() {
+                // User confirmed cancellation
                 frappe.call({
                     method: 'zerp.www.my_subscriptions.cancel_subscription',
                     args: {
