@@ -1,3 +1,6 @@
+# Copyright (c) 2024, Frappe Technologies and contributors
+# For license information, please see license.txt
+
 import frappe
 from frappe import _
 from frappe.model.document import Document
@@ -6,6 +9,21 @@ from frappe.utils import get_bench_path
 import os
 
 class Subscription(Document):
+    def validate(self):
+        pass
+
+    def before_save(self):
+        pass
+
+    def on_update(self):
+        pass
+
+    def on_trash(self):
+        pass
+
+    def on_cancel(self):
+        pass
+
     @frappe.whitelist()
     def cancel_subscription(self):
         """Cancel subscription and drop the associated site"""

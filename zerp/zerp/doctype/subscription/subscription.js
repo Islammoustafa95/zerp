@@ -17,12 +17,8 @@ frappe.ui.form.on('Subscription', {
                     </div>`,
                     () => {
                         // User confirmed, proceed with cancellation
-                        frm.call({
-                            doc: frm.doc,
-                            method: 'cancel_subscription',
-                            freeze: true,
-                            freeze_message: __('Cancelling subscription and dropping site...'),
-                            callback: function(r) {
+                        frm.call('cancel_subscription')
+                            .then(r => {
                                 if (r.message && r.message.success) {
                                     frappe.msgprint({
                                         title: __('Success'),
@@ -37,8 +33,7 @@ frappe.ui.form.on('Subscription', {
                                         message: r.message.message || __('Failed to cancel subscription')
                                     });
                                 }
-                            }
-                        });
+                            });
                     }
                 );
             }, __('Actions'));
