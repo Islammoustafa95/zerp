@@ -28,6 +28,10 @@ class Subscription(Document):
     def cancel_subscription(self):
         """Cancel subscription and drop the associated site"""
         try:
+            # Check if user has permission to cancel
+            if not frappe.has_permission(self.doctype, "write") and not frappe.has_permission(self.doctype, "cancel"):
+                if not "System Manager" in frappe.get_roles():
+                    frappe.throw(_("You don't have permission to cancel this subscription"))
             # Check if site is created
             if not self.is_site_created or not self.site_url:
                 return {
