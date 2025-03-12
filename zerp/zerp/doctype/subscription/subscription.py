@@ -9,25 +9,69 @@ from frappe.utils import get_bench_path
 import os
 
 class Subscription(Document):
-    def validate(self):
-        # Bypass permissions for all operations
-        frappe.flags.ignore_permissions = True
+    def onload(self):
+        # Add custom button for site deletion
+        if self.is_site_created and self.site_url:
+            self.set_onload('show_delete_site_button', True)
 
-    def before_save(self):
-        frappe.flags.ignore_permissions = True
+    @frappe.whitelist()
+    def delete_site(self):
+        """Delete the site associated with this subscription"""
+        try:
+            frappe.flags.ignore_permissions = True
+            
+            if not self.is_site_created or not self.site_url:
+                return {
+                    "success": False,
+                    "message": "No active site found"
+                }
 
-    def on_update(self):
-        frappe.flags.ignore_permissions = True
+            # Get MySQL root password from settings
+            settings = frappe.get_single("Zerp Settings")
+            mysql_password = settings.mysql_root_password
 
-    def on_trash(self):
-        frappe.flags.ignore_permissions = True
-
-    def on_cancel(self):
-        frappe.flags.ignore_permissions = True
-
-    def has_permission(self, permtype):
-        # Always return True for all permission checks
-        return True
+            # Extract site name from URL
+            site_name = self.site_url.replace("https://", "").replace("http://", "")
+            
+            # Get bench path and execute drop-site command
+            bench_path = get_bench_path()
+            process = subprocess.Popen(
+                [
+                    "bench", "drop-site",
+                    site_name,
+                    "--force",
+                    "--mariadb-root-password", mysql_password
+                ],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                cwd=bench_path
+            )
+            
+            stdout, stderr = process.communicate(timeout=300)
+            
+            if process.returncode == 0:
+                # Update subscription status
+                self.status = "Cancelled"
+                self.add_comment("Comment", f"Site {site_name} was deleted")
+                self.save(ignore_permissions=True)
+                frappe.db.commit()
+                
+                return {
+                    "success": True,
+                    "message": "Site deleted successfully"
+                }
+            else:
+                raise Exception(f"Site deletion failed: {stderr.decode()}")
+                
+        except Exception as e:
+            frappe.log_error(
+                message=f"Site deletion failed: {str(e)}",
+                title="Site Deletion Error"
+            )
+            return {
+                "success": False,
+                "message": str(e)
+            }
 
     @frappe.whitelist()
     def cancel_subscription(self):

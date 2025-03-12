@@ -1,42 +1,29 @@
 frappe.ui.form.on('Subscription', {
     refresh: function(frm) {
-        // Add cancel button only if subscription is Active and site is created
-        if (frm.doc.status === 'Active' && frm.doc.is_site_created) {
-            frm.add_custom_button(__('Cancel Subscription'), function() {
-                // Show confirmation dialog with warning
+        // Add delete site button if site exists
+        if (frm.doc.__onload && frm.doc.__onload.show_delete_site_button) {
+            frm.add_custom_button(__('Delete Site'), function() {
                 frappe.confirm(
-                    `<div class="text-center">
-                        <div class="mb-3">
-                            <i class="fa fa-exclamation-triangle fa-3x text-warning"></i>
-                        </div>
-                        <h4>Cancel Subscription</h4>
-                        <p class="text-danger"><strong>WARNING: This action cannot be undone!</strong></p>
-                        <p>This will permanently delete your site and all its data.</p>
-                        <p>Are you absolutely sure you want to cancel this subscription?</p>
-                        <p><strong>${frm.doc.site_url}</strong></p>
-                    </div>`,
-                    () => {
-                        // User confirmed, proceed with cancellation
+                    'Are you sure you want to delete this site? This action cannot be undone.',
+                    function() {
                         frappe.call({
-                            method: 'zerp.www.my_subscriptions.cancel_subscription',
-                            args: {
-                                subscription: frm.doc.name
-                            },
+                            method: 'delete_site',
+                            doc: frm.doc,
                             freeze: true,
-                            freeze_message: __('Cancelling subscription and dropping site...'),
+                            freeze_message: __('Deleting site...'),
                             callback: function(r) {
                                 if (r.message && r.message.success) {
                                     frappe.msgprint({
                                         title: __('Success'),
-                                        indicator: 'green',
-                                        message: __('Subscription cancelled successfully')
+                                        message: r.message.message,
+                                        indicator: 'green'
                                     });
                                     frm.reload_doc();
                                 } else {
                                     frappe.msgprint({
                                         title: __('Error'),
-                                        indicator: 'red',
-                                        message: r.message.message || __('Failed to cancel subscription')
+                                        message: r.message.message || 'Site deletion failed',
+                                        indicator: 'red'
                                     });
                                 }
                             }
