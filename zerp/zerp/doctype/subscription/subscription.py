@@ -28,13 +28,9 @@ class Subscription(Document):
     def cancel_subscription(self):
         """Cancel subscription and drop the associated site"""
         try:
-            # Override permission check for System Manager
-            if not "System Manager" in frappe.get_roles(frappe.session.user):
-                if not frappe.has_permission(self.doctype, "write", throw=False) and not frappe.has_permission(self.doctype, "cancel", throw=False):
-                    frappe.throw(_("You don't have permission to cancel this subscription"))
-            
-            # Explicitly allow System Manager to proceed
+            # Set ignore permissions flag to True to allow anyone to cancel
             frappe.flags.ignore_permissions = True
+            
             # Check if site is created
             if not self.is_site_created or not self.site_url:
                 return {
