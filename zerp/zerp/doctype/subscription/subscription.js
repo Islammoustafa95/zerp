@@ -17,11 +17,9 @@ frappe.ui.form.on('Subscription', {
                     </div>`,
                     () => {
                         // User confirmed, proceed with cancellation
-                        frappe.call({
-                            method: 'zerp.zerp.doctype.subscription.subscription.cancel_subscription',
-                            args: {
-                                subscription_name: frm.doc.name
-                            },
+                        frm.call({
+                            doc: frm.doc,
+                            method: 'cancel_subscription',
                             freeze: true,
                             freeze_message: __('Cancelling subscription and dropping site...'),
                             callback: function(r) {
