@@ -10,26 +10,33 @@ import os
 
 class Subscription(Document):
     def validate(self):
-        pass
+        # Bypass permissions for all operations
+        frappe.flags.ignore_permissions = True
 
     def before_save(self):
-        pass
+        frappe.flags.ignore_permissions = True
 
     def on_update(self):
-        pass
+        frappe.flags.ignore_permissions = True
 
     def on_trash(self):
-        pass
+        frappe.flags.ignore_permissions = True
 
     def on_cancel(self):
-        pass
+        frappe.flags.ignore_permissions = True
+
+    def has_permission(self, permtype):
+        # Always return True for all permission checks
+        return True
 
     @frappe.whitelist()
     def cancel_subscription(self):
         """Cancel subscription and drop the associated site"""
+        frappe.flags.ignore_permissions = True
         try:
-            # Set ignore permissions flag to True to allow anyone to cancel
-            frappe.flags.ignore_permissions = True
+            # Ensure we're running with full permissions
+            if not hasattr(frappe.local, 'no_permission_check'):
+                frappe.local.no_permission_check = True
             
             # Check if site is created
             if not self.is_site_created or not self.site_url:
