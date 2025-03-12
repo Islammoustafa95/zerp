@@ -26,12 +26,52 @@ class Subscription(Document):
                     "message": "No active site found"
                 }
 
-            # Get MySQL root password from settings
+            # Get settings for MySQL and Cloudflare
             settings = frappe.get_single("Zerp Settings")
             mysql_password = settings.mysql_root_password
+            cloudflare_token = settings.cloudflare_token
+            zone_id = settings.cloudflare_zone_id
 
             # Extract site name from URL
             site_name = self.site_url.replace("https://", "").replace("http://", "")
+
+            # Delete Cloudflare DNS record
+            try:
+                import requests
+                headers = {
+                    "Authorization": f"Bearer {cloudflare_token}",
+                    "Content-Type": "application/json"
+                }
+
+                # First, get the DNS record ID
+                list_records_url = f"https://api.cloudflare.com/client/v4/zones/{zone_id}/dns_records"
+                params = {"name": site_name}
+                response = requests.get(list_records_url, headers=headers, params=params)
+                response_data = response.json()
+
+                if response_data["success"] and response_data["result"]:
+                    # Delete each matching DNS record
+                    for record in response_data["result"]:
+                        record_id = record["id"]
+                        delete_url = f"https://api.cloudflare.com/client/v4/zones/{zone_id}/dns_records/{record_id}"
+                        delete_response = requests.delete(delete_url, headers=headers)
+                        
+                        if not delete_response.json()["success"]:
+                            frappe.log_error(
+                                message=f"Failed to delete Cloudflare DNS record: {delete_response.text}",
+                                title="Cloudflare DNS Deletion Error"
+                            )
+                            
+                frappe.log_error(
+                    message=f"Cloudflare DNS records deletion attempt completed for {site_name}",
+                    title="Cloudflare DNS Deletion"
+                )
+                
+            except Exception as cf_error:
+                frappe.log_error(
+                    message=f"Error deleting Cloudflare DNS record: {str(cf_error)}",
+                    title="Cloudflare DNS Deletion Error"
+                )
             
             # Get bench path and execute drop-site command
             bench_path = get_bench_path()
@@ -52,13 +92,13 @@ class Subscription(Document):
             if process.returncode == 0:
                 # Update subscription status
                 self.status = "Cancelled"
-                self.add_comment("Comment", f"Site {site_name} was deleted")
+                self.add_comment("Comment", f"Site {site_name} and its DNS records were deleted")
                 self.save(ignore_permissions=True)
                 frappe.db.commit()
                 
                 return {
                     "success": True,
-                    "message": "Site deleted successfully"
+                    "message": "Site and DNS records deleted successfully"
                 }
             else:
                 raise Exception(f"Site deletion failed: {stderr.decode()}")
