@@ -17,8 +17,14 @@ frappe.ui.form.on('Subscription', {
                     </div>`,
                     () => {
                         // User confirmed, proceed with cancellation
-                        frm.call('cancel_subscription')
-                            .then(r => {
+                        frappe.call({
+                            method: 'zerp.www.my_subscriptions.cancel_subscription',
+                            args: {
+                                subscription: frm.doc.name
+                            },
+                            freeze: true,
+                            freeze_message: __('Cancelling subscription and dropping site...'),
+                            callback: function(r) {
                                 if (r.message && r.message.success) {
                                     frappe.msgprint({
                                         title: __('Success'),
@@ -33,7 +39,8 @@ frappe.ui.form.on('Subscription', {
                                         message: r.message.message || __('Failed to cancel subscription')
                                     });
                                 }
-                            });
+                            }
+                        });
                     }
                 );
             }, __('Actions'));
