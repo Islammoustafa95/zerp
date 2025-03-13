@@ -5,10 +5,12 @@ import json
 
 no_cache = 1
 
-# Initialize Stripe with the secret key
-stripe.api_key = "sk_test_51R2CksPNpLmY7PfUtmrlBdJ9ItaOU33DaIWyapHibYNIaxhULxxFdG4tOrUFpthgDIEu3KyolZdGpfKF7a1z1iAE00WnZrAs4g"
-
 def get_context(context):
+    # Get Stripe settings
+    settings = frappe.get_single("Zerp Settings")
+    context.stripe_publishable_key = settings.stripe_publishable_key
+    stripe.api_key = settings.stripe_secret_key
+    
     context.subscription_plans = get_subscription_plans()
     context.no_cache = 1
     context.base_domain = "zaynerp.com"
