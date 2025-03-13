@@ -202,7 +202,7 @@ def create_subscription(plan, subdomain, payment_method_id):
             
             # Trigger site creation
             frappe.enqueue(
-                "zerp.zerp.site_creation.create_new_site",
+                "zerp.site_creation.create_new_site",
                 subscription=doc.name,
                 now=True
             )
