@@ -12,6 +12,10 @@
   "base_domain",
   "server_ip",
   "column_break_4",
+  "stripe_section",
+  "stripe_secret_key",
+  "stripe_publishable_key",
+  "stripe_webhook_secret",
   "mysql_section",
   "mysql_root_password"
  ],
@@ -53,6 +57,27 @@
   {
    "fieldname": "column_break_4",
    "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "stripe_section",
+   "fieldtype": "Section Break",
+   "label": "Stripe Settings"
+  },
+  {
+   "fieldname": "stripe_secret_key",
+   "fieldtype": "Password",
+   "label": "Stripe Secret Key"
+  },
+  {
+   "fieldname": "stripe_publishable_key",
+   "fieldtype": "Data",
+   "label": "Stripe Publishable Key"
+  },
+  {
+   "fieldname": "stripe_webhook_secret",
+   "fieldtype": "Password",
+   "label": "Stripe Webhook Secret",
+   "description": "Webhook signing secret from Stripe dashboard"
   },
   {
    "fieldname": "mysql_section",
