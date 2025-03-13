@@ -163,8 +163,6 @@ webpage_export = [
 # Installation
 # ------------
 
-before_install = "zerp.zerp.install.before_install"
-after_install = "zerp.zerp.install.after_install"
 
 # Uninstallation
 # ------------

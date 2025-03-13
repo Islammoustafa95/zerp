@@ -125,8 +125,15 @@ def create_subscription(plan, subdomain, payment_method_id):
             return {"success": False, "message": "Plan not properly configured"}
         
         try:
-            # Create or get customer
-            customer_id = frappe.db.get_value("User", frappe.session.user, "stripe_customer_id")
+            # Create or get customer from existing subscriptions
+            customer_id = frappe.db.get_value(
+                "Subscription",
+                {
+                    "user": frappe.session.user,
+                    "stripe_customer_id": ("!=", "")
+                },
+                "stripe_customer_id"
+            )
             
             if not customer_id:
                 # Create new customer

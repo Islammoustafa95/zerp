@@ -29,7 +29,6 @@
   "column_break_payment",
   "payment_amount",
   "payment_date",
-
   "plan_details_section",
   "plan_name",
   "plan_monthly_subscription",
@@ -113,15 +112,78 @@
    "read_only": 1
   },
   {
-   "fieldname": "comments_section",
-   "fieldtype": "Section Break",
-   "label": "Comments"
+   "default": "Active",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Draft\nActive\nExpired\nCancelled"
   },
   {
-   "fieldname": "comments",
-   "fieldtype": "Table",
-   "label": "Comments",
-   "options": "Subscription Comment"
+   "fieldname": "stripe_section",
+   "fieldtype": "Section Break",
+   "label": "Stripe Details"
+  },
+  {
+   "fieldname": "stripe_customer_id",
+   "fieldtype": "Data",
+   "label": "Stripe Customer ID",
+   "read_only": 1
+  },
+  {
+   "fieldname": "stripe_subscription_id",
+   "fieldtype": "Data",
+   "label": "Stripe Subscription ID",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_stripe",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "trial_end_date",
+   "fieldtype": "Date",
+   "label": "Trial End Date",
+   "read_only": 1
+  },
+  {
+   "fieldname": "next_billing_date",
+   "fieldtype": "Date",
+   "label": "Next Billing Date",
+   "read_only": 1
+  },
+  {
+   "fieldname": "payment_section",
+   "fieldtype": "Section Break",
+   "label": "Payment Details"
+  },
+  {
+   "fieldname": "payment_id",
+   "fieldtype": "Data",
+   "label": "Payment ID",
+   "read_only": 1
+  },
+  {
+   "fieldname": "payment_status",
+   "fieldtype": "Select",
+   "label": "Payment Status",
+   "options": "Pending\nPaid\nFailed",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_payment",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "payment_amount",
+   "fieldtype": "Currency",
+   "label": "Payment Amount",
+   "read_only": 1
+  },
+  {
+   "fieldname": "payment_date",
+   "fieldtype": "Datetime",
+   "label": "Payment Date",
+   "read_only": 1
   },
   {
    "fieldname": "plan_details_section",
@@ -213,13 +275,6 @@
    "fieldtype": "Datetime",
    "label": "Modified Date",
    "read_only": 1
-  },
-  {
-   "default": "Active",
-   "fieldname": "status",
-   "fieldtype": "Select",
-   "label": "Status",
-   "options": "Draft\nActive\nExpired\nCancelled"
   }
  ],
  "index_web_pages_for_search": 1,
