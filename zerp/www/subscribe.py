@@ -200,12 +200,7 @@ def create_subscription(plan, subdomain, payment_method_id):
             
             doc.insert(ignore_permissions=True)
             
-            # Trigger site creation
-            frappe.enqueue(
-                "zerp.site_creation.create_new_site",
-                subscription=doc.name,
-                now=True
-            )
+            # Site creation will be handled by subscription doctype's after_insert
             
             return {
                 "success": True,
