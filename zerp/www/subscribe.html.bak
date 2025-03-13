@@ -12,6 +12,81 @@
             <h1 class="text-center">Choose Your Subscription Plan</h1>
             <p class="text-center mb-5">Select a plan that best fits your needs and create your workspace</p>
             
+            <!-- Subscription Form with Payment -->
+            <div class="subscription-form {% if not selected_plan %}d-none{% endif %}" id="subscription-form">
+                <div class="row justify-content-center">
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-body">
+                                <h3 class="card-title">Create Your Workspace</h3>
+                                <div id="subscription-steps">
+                                    <!-- Step 1: Subdomain -->
+                                    <div class="step active" id="step-subdomain">
+                                        <h4 class="step-title">1. Choose Your Subdomain</h4>
+                                        <div class="form-group">
+                                            <label for="subdomain">Your Workspace URL</label>
+                                            <div class="input-group">
+                                                <input type="text" class="form-control" id="subdomain" name="subdomain" 
+                                                       placeholder="yourcompany" value="{{ subdomain or '' }}" required>
+                                                <div class="input-group-append">
+                                                    <span class="input-group-text">.{{ base_domain }}</span>
+                                                </div>
+                                            </div>
+                                            <small class="form-text text-muted">This will be your unique workspace URL</small>
+                                        </div>
+                                        <div class="text-right">
+                                            <button type="button" class="btn btn-primary" id="next-to-payment">Continue to Payment</button>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Step 2: Payment -->
+                                    <div class="step" id="step-payment">
+                                        <h4 class="step-title">2. Payment Information</h4>
+                                        <div class="selected-plan-summary mb-4">
+                                            <h5>Selected Plan: <span id="summary-plan-name"></span></h5>
+                                            <div class="price">$<span id="summary-plan-price"></span>/month</div>
+                                        </div>
+                                        
+                                        <form id="payment-form">
+                                            <div class="form-group">
+                                                <label for="cardholder-name">Cardholder Name</label>
+                                                <input type="text" class="form-control" id="cardholder-name" required>
+                                            </div>
+                                            
+                                            <div class="form-group">
+                                                <label for="card-element">Credit or Debit Card</label>
+                                                <div id="card-element" class="form-control">
+                                                    <!-- Stripe Card Element will be inserted here -->
+                                                </div>
+                                                <div id="card-errors" class="text-danger mt-2" role="alert"></div>
+                                                <small class="form-text text-muted">
+                                                    Your card will be charged after the 14-day free trial period.
+                                                </small>
+                                            </div>
+                                            
+                                            <div class="form-row mt-4">
+                                                <div class="col">
+                                                    <button type="button" class="btn btn-outline-secondary" id="back-to-subdomain">Back</button>
+                                                </div>
+                                                <div class="col text-right">
+                                                    <button type="submit" class="btn btn-primary" id="submit-payment">
+                                                        <span id="button-text">Pay and Create Workspace</span>
+                                                        <span id="spinner" class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                                
+                                <input type="hidden" name="plan" id="selected-plan" value="{{ selected_plan or '' }}">
+                                <input type="hidden" id="payment-intent-id" name="payment_intent_id">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Plans Section -->
             <div class="subscription-plans">
                 <div class="row justify-content-center">
@@ -31,80 +106,6 @@
                         </div>
                     </div>
                     {% endfor %}
-                </div>
-            </div>
-
-            <!-- Subscription Form -->
-            <div class="subscription-form {% if not selected_plan %}d-none{% endif %}" id="subscription-form">
-                <div class="row justify-content-center">
-                    <div class="col-md-6">
-                        <div class="card">
-                            <div class="card-body">
-                                <h3 class="card-title">Create Your Workspace</h3>
-                                
-                                <!-- Step 1: Subdomain -->
-                                <div class="step active" id="step-subdomain">
-                                    <h4 class="step-title">Choose Your Subdomain</h4>
-                                    <div class="form-group">
-                                        <label for="subdomain">Your Workspace URL</label>
-                                        <div class="input-group">
-                                            <input type="text" class="form-control" id="subdomain" name="subdomain" 
-                                                   placeholder="yourcompany" value="{{ subdomain or '' }}" required>
-                                            <div class="input-group-append">
-                                                <span class="input-group-text">.{{ base_domain }}</span>
-                                            </div>
-                                        </div>
-                                        <small class="form-text text-muted">This will be your unique workspace URL</small>
-                                    </div>
-                                    <div class="text-right">
-                                        <button type="button" class="btn btn-primary" id="next-to-payment">Continue to Payment</button>
-                                    </div>
-                                </div>
-                                
-                                <!-- Step 2: Payment -->
-                                <div class="step" id="step-payment">
-                                    <h4 class="step-title">Payment Information</h4>
-                                    <div class="selected-plan-summary mb-4">
-                                        <h5>Selected Plan: <span id="summary-plan-name"></span></h5>
-                                        <div class="price">$<span id="summary-plan-price"></span>/month</div>
-                                        <div class="trial-info">14-day free trial, then monthly subscription starts</div>
-                                    </div>
-                                    
-                                    <form id="payment-form">
-                                        <div class="form-group">
-                                            <label for="cardholder-name">Cardholder Name</label>
-                                            <input type="text" class="form-control" id="cardholder-name" required>
-                                        </div>
-                                        
-                                        <div class="form-group">
-                                            <label for="card-element">Credit or Debit Card</label>
-                                            <div id="card-element" class="form-control">
-                                                <!-- Stripe Card Element will be inserted here -->
-                                            </div>
-                                            <div id="card-errors" class="text-danger mt-2" role="alert"></div>
-                                            <small class="form-text text-muted">
-                                                Your card will be charged after the 14-day free trial period.
-                                            </small>
-                                        </div>
-                                        
-                                        <div class="form-row mt-4">
-                                            <div class="col">
-                                                <button type="button" class="btn btn-outline-secondary" id="back-to-subdomain">Back</button>
-                                            </div>
-                                            <div class="col text-right">
-                                                <button type="submit" class="btn btn-primary" id="submit-payment">
-                                                    <span id="button-text">Start Free Trial</span>
-                                                    <span id="spinner" class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </form>
-                                </div>
-                                
-                                <input type="hidden" name="plan" id="selected-plan" value="{{ selected_plan or '' }}">
-                            </div>
-                        </div>
-                    </div>
                 </div>
             </div>
         </div>
@@ -149,10 +150,22 @@
         margin: 20px 0;
         color: #666;
     }
-    .trial-info {
-        color: #666;
-        font-size: 0.9em;
-        margin-top: 10px;
+    .apps {
+        margin: 20px 0;
+        text-align: left;
+    }
+    .apps h4 {
+        font-size: 16px;
+        margin-bottom: 10px;
+    }
+    .apps ul {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+    .apps li {
+        margin: 5px 0;
+        color: #555;
     }
     .subscription-form {
         margin: 40px 0;
@@ -202,7 +215,8 @@
 
 {% block script %}
 <script>
-const stripe = Stripe('{{ stripe_publishable_key }}');
+// Initialize Stripe
+const stripe = Stripe('pk_test_51R2CksPNpLmY7PfUBqKK5tQkud878jmHAHpjpPIkBaVHM0jF23UpyfWVhhZIsSzdJoxFB51yH9Dyv4YwAKSrfZex00DwX2xfO0');
 let elements;
 let card;
 let selectedPlanPrice = 0;
@@ -336,7 +350,7 @@ frappe.ready(function() {
         const subdomain = $('#subdomain').val();
         
         try {
-            // Create payment method
+            // Create subscription
             const result = await stripe.createPaymentMethod({
                 type: 'card',
                 card: card,
@@ -356,50 +370,34 @@ frappe.ready(function() {
                 buttonText.textContent = 'Start Free Trial';
             } else {
                 // Create subscription with payment method
-                frappe.call({
-                    method: 'zerp.www.subscribe.create_subscription',
-                    args: {
-                        plan: plan,
-                        subdomain: subdomain,
-                        payment_method_id: result.paymentMethod.id
-                    },
-                    callback: function(r) {
-                        if (r.message && r.message.success) {
-                            frappe.show_alert({
-                                message: r.message.message,
-                                indicator: 'green'
-                            });
-                            
-                            // Redirect to success page
-                            setTimeout(function() {
-                                window.location.href = '/my_subscriptions';
-                            }, 2000);
-                        } else {
-                            // Show error
-                            frappe.show_alert({
-                                message: r.message.message || 'Error creating subscription',
-                                indicator: 'red'
-                            });
-                            
-                            // Re-enable button
-                            submitButton.disabled = false;
-                            spinner.classList.add('d-none');
-                            buttonText.textContent = 'Start Free Trial';
-                        }
-                    },
-                    error: function(err) {
-                        // Show error
-                        frappe.show_alert({
-                            message: err.message || 'Error creating subscription',
-                            indicator: 'red'
-                        });
-                        
-                        // Re-enable button
-                        submitButton.disabled = false;
-                        spinner.classList.add('d-none');
-                        buttonText.textContent = 'Start Free Trial';
-                    }
-                });
+                const subscriptionResponse = await createSubscription(
+                    plan,
+                    subdomain,
+                    result.paymentMethod.id
+                );
+                
+                if (subscriptionResponse.success) {
+                    frappe.show_alert({
+                        message: subscriptionResponse.message,
+                        indicator: 'green'
+                    });
+                    
+                    // Redirect to success page
+                    setTimeout(function() {
+                        window.location.href = '/my_subscriptions';
+                    }, 2000);
+                } else {
+                    // Show error
+                    frappe.show_alert({
+                        message: subscriptionResponse.message || 'Error creating subscription',
+                        indicator: 'red'
+                    });
+                    
+                    // Re-enable button
+                    submitButton.disabled = false;
+                    spinner.classList.add('d-none');
+                    buttonText.textContent = 'Start Free Trial';
+                }
             }
         } catch (error) {
             // Show error
@@ -412,7 +410,7 @@ frappe.ready(function() {
             // Re-enable button
             submitButton.disabled = false;
             spinner.classList.add('d-none');
-            buttonText.textContent = 'Start Free Trial';
+            buttonText.textContent = 'Pay and Create Workspace';
         }
     });
     
@@ -428,5 +426,52 @@ frappe.ready(function() {
         });
     }
 });
+
+// Create Payment Intent function
+function createPaymentIntent(plan, subdomain) {
+    return new Promise((resolve, reject) => {
+        frappe.call({
+            method: 'zerp.www.subscribe.create_payment_intent',
+            args: {
+                plan: plan,
+                subdomain: subdomain
+            },
+            callback: function(r) {
+                if (r.message) {
+                    resolve(r.message);
+                } else {
+                    reject(new Error('Failed to create payment intent'));
+                }
+            },
+            error: function(err) {
+                reject(err);
+            }
+        });
+    });
+}
+
+// Create Subscription function
+function createSubscription(plan, subdomain, paymentIntentId) {
+    return new Promise((resolve, reject) => {
+        frappe.call({
+            method: 'zerp.www.subscribe.create_subscription',
+            args: {
+                plan: plan,
+                subdomain: subdomain,
+                payment_intent_id: paymentIntentId
+            },
+            callback: function(r) {
+                if (r.message) {
+                    resolve(r.message);
+                } else {
+                    reject(new Error('Failed to create subscription'));
+                }
+            },
+            error: function(err) {
+                reject(err);
+            }
+        });
+    });
+}
 </script>
 {% endblock %}
