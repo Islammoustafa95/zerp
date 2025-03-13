@@ -59,6 +59,9 @@
                                                     <!-- Stripe Card Element will be inserted here -->
                                                 </div>
                                                 <div id="card-errors" class="text-danger mt-2" role="alert"></div>
+                                                <small class="form-text text-muted">
+                                                    Your card will be charged after the 14-day free trial period.
+                                                </small>
                                             </div>
                                             
                                             <div class="form-row mt-4">
@@ -347,25 +350,15 @@ frappe.ready(function() {
         const subdomain = $('#subdomain').val();
         
         try {
-            // Create payment intent on server
-            const paymentIntentResponse = await createPaymentIntent(plan, subdomain);
-            
-            if (!paymentIntentResponse.success) {
-                throw new Error(paymentIntentResponse.message || 'Error creating payment intent');
-            }
-            
-            const clientSecret = paymentIntentResponse.client_secret;
-            
-            // Complete payment with Stripe
-            const result = await stripe.confirmCardPayment(clientSecret, {
-                payment_method: {
-                    card: card,
-                    billing_details: {
-                        name: cardholderName
-                    }
+            // Create subscription
+            const result = await stripe.createPaymentMethod({
+                type: 'card',
+                card: card,
+                billing_details: {
+                    name: cardholderName
                 }
             });
-            
+
             if (result.error) {
                 // Show error
                 const errorElement = document.getElementById('card-errors');
@@ -374,16 +367,13 @@ frappe.ready(function() {
                 // Re-enable button
                 submitButton.disabled = false;
                 spinner.classList.add('d-none');
-                buttonText.textContent = 'Pay and Create Workspace';
-            } else if (result.paymentIntent.status === 'succeeded') {
-                // Payment succeeded
-                document.getElementById('payment-intent-id').value = result.paymentIntent.id;
-                
-                // Create subscription
+                buttonText.textContent = 'Start Free Trial';
+            } else {
+                // Create subscription with payment method
                 const subscriptionResponse = await createSubscription(
                     plan,
                     subdomain,
-                    result.paymentIntent.id
+                    result.paymentMethod.id
                 );
                 
                 if (subscriptionResponse.success) {
@@ -406,7 +396,7 @@ frappe.ready(function() {
                     // Re-enable button
                     submitButton.disabled = false;
                     spinner.classList.add('d-none');
-                    buttonText.textContent = 'Pay and Create Workspace';
+                    buttonText.textContent = 'Start Free Trial';
                 }
             }
         } catch (error) {

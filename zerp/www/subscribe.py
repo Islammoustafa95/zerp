@@ -94,39 +94,16 @@ def create_payment_intent(plan, subdomain):
         return {"success": False, "message": str(e)}
 
 @frappe.whitelist()
-def create_subscription(plan, subdomain, payment_intent_id):
-    """Create a subscription after successful payment"""
+def create_subscription(plan, subdomain, payment_method_id):
+    """Create a subscription with trial period"""
     try:
         # Validate inputs
         if not plan:
             return {"success": False, "message": "Plan is required"}
         if not subdomain:
             return {"success": False, "message": "Subdomain is required"}
-        if not payment_intent_id:
-            return {"success": False, "message": "Payment information is required"}
-        
-        # Verify the payment intent
-        try:
-            payment_intent = stripe.PaymentIntent.retrieve(payment_intent_id)
-            
-            # Check payment status
-            if payment_intent.status != "succeeded":
-                return {"success": False, "message": f"Payment not completed. Status: {payment_intent.status}"}
-            
-            # Verify payment amount matches plan amount
-            plan_doc = frappe.get_doc("Subscription Plan", plan)
-            expected_amount = int(float(plan_doc.plan_monthly_subscription) * 100)
-            
-            if payment_intent.amount != expected_amount:
-                frappe.log_error(
-                    message=f"Payment amount mismatch: expected {expected_amount}, got {payment_intent.amount}",
-                    title="Payment Amount Error"
-                )
-                return {"success": False, "message": "Payment amount doesn't match plan price"}
-                
-        except stripe.error.StripeError as e:
-            frappe.log_error(message=f"Stripe error: {str(e)}", title="Stripe Payment Verification Error")
-            return {"success": False, "message": f"Payment verification failed: {str(e)}"}
+        if not payment_method_id:
+            return {"success": False, "message": "Payment method is required"}
         
         # Check if subdomain already exists
         existing = frappe.db.exists("Subscription", {"sub_domain": subdomain})
@@ -134,50 +111,79 @@ def create_subscription(plan, subdomain, payment_intent_id):
             return {"success": False, "message": "This subdomain is already taken. Please choose another one."}
         
         # Get plan details
-        if not frappe.db.exists("Subscription Plan", plan):
+        plan_doc = frappe.get_doc("Subscription Plan", plan)
+        if not plan_doc:
             return {"success": False, "message": "Invalid plan selected"}
+            
+        if not plan_doc.stripe_price_id:
+            return {"success": False, "message": "Plan not properly configured"}
         
-        # Create subscription
-        subscription = frappe.get_doc({
-            "doctype": "Subscription",
-            "user": frappe.session.user,
-            "sub_domain": subdomain,
-            "subscription_type": "Paid",  # Changed from Trial to Paid
-            "plan": plan,
-            "start_date": frappe.utils.today(),
-            "status": "Draft"
-        })
-        
-        # Add payment info as custom fields
-        subscription.payment_id = payment_intent_id
-        subscription.payment_status = "Paid"
-        subscription.payment_amount = plan_doc.plan_monthly_subscription
-        subscription.payment_date = frappe.utils.now()
-        
-        subscription.insert(ignore_permissions=True)
-        
-        # Add payment details as a comment
-        payment_details = f"""
-Payment processed successfully:
-- Payment ID: {payment_intent_id}
-- Amount: ${plan_doc.plan_monthly_subscription}
-- Date: {frappe.utils.now()}
-- Status: Paid
-"""
-        subscription.add_comment("Comment", payment_details)
-        
-        # Log success
-        frappe.log_error(
-            message=f"Subscription created successfully: {subscription.name} with payment {payment_intent_id}",
-            title="Subscription Created"
-        )
-        
-        return {
-            "success": True,
-            "message": _("Subscription created successfully! Your site is being created."),
-            "subscription": subscription.name
-        }
-        
+        try:
+            # Create or get customer
+            customer_id = frappe.db.get_value("User", frappe.session.user, "stripe_customer_id")
+            
+            if not customer_id:
+                # Create new customer
+                customer = stripe.Customer.create(
+                    email=frappe.session.user,
+                    payment_method=payment_method_id,
+                    invoice_settings={
+                        'default_payment_method': payment_method_id
+                    }
+                )
+                customer_id = customer.id
+                
+                # Save customer ID to user
+                user = frappe.get_doc("User", frappe.session.user)
+                user.db_set('stripe_customer_id', customer_id)
+            
+            # Create subscription
+            subscription = stripe.Subscription.create(
+                customer=customer_id,
+                items=[{'price': plan_doc.stripe_price_id}],
+                trial_period_days=plan_doc.trial_period_days,
+                payment_settings={'save_default_payment_method': 'on_subscription'},
+                metadata={
+                    'subdomain': subdomain,
+                    'plan': plan,
+                    'user': frappe.session.user
+                }
+            )
+            
+            # Create subscription record
+            doc = frappe.get_doc({
+                "doctype": "Subscription",
+                "user": frappe.session.user,
+                "sub_domain": subdomain,
+                "subscription_type": "Trial",
+                "plan": plan,
+                "start_date": frappe.utils.today(),
+                "status": "Active",
+                "stripe_customer_id": customer_id,
+                "stripe_subscription_id": subscription.id,
+                "trial_end_date": frappe.utils.add_days(None, subscription.trial_end) if subscription.trial_end else None,
+                "next_billing_date": frappe.utils.add_days(None, subscription.current_period_end)
+            })
+            
+            doc.insert(ignore_permissions=True)
+            
+            # Trigger site creation
+            frappe.enqueue(
+                "zerp.zerp.site_creation.create_new_site",
+                subscription=doc.name,
+                now=True
+            )
+            
+            return {
+                "success": True,
+                "message": _("Subscription created successfully! Your site is being created."),
+                "subscription": doc.name
+            }
+            
+        except stripe.error.StripeError as e:
+            frappe.log_error(message=f"Stripe error: {str(e)}", title="Stripe Subscription Error")
+            return {"success": False, "message": str(e)}
+            
     except Exception as e:
         frappe.log_error(frappe.get_traceback(), _("Subscription Creation Failed"))
         return {

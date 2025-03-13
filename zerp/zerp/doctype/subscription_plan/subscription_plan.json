@@ -9,7 +9,12 @@
   "plan_name",
   "plan_monthly_subscription",
   "plan_description",
-  "plan_apps"
+  "plan_apps",
+  "section_break_stripe",
+  "stripe_product_id",
+  "stripe_price_id",
+  "column_break_stripe",
+  "trial_period_days"
  ],
  "fields": [
   {
@@ -37,6 +42,34 @@
    "fieldtype": "Table",
    "label": "Plan Apps",
    "options": "Subscription Plan App"
+  },
+  {
+   "fieldname": "section_break_stripe",
+   "fieldtype": "Section Break",
+   "label": "Stripe Configuration"
+  },
+  {
+   "fieldname": "stripe_product_id",
+   "fieldtype": "Data",
+   "label": "Stripe Product ID",
+   "description": "Product ID from Stripe (e.g., prod_RvOuDBNMVkYUPI)"
+  },
+  {
+   "fieldname": "stripe_price_id",
+   "fieldtype": "Data",
+   "label": "Stripe Price ID",
+   "description": "Price ID from Stripe for recurring billing"
+  },
+  {
+   "fieldname": "column_break_stripe",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "trial_period_days",
+   "fieldtype": "Int",
+   "label": "Trial Period (Days)",
+   "default": 14,
+   "description": "Number of days for free trial"
   }
  ],
  "index_web_pages_for_search": 1,
