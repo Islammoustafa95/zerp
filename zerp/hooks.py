@@ -163,8 +163,8 @@ webpage_export = [
 # Installation
 # ------------
 
-before_install = "zerp.custom_fields.setup_custom_fields"
-after_install = "zerp.custom_fields.setup_custom_fields"
+before_install = "zerp.zerp.install.before_install"
+after_install = "zerp.zerp.install.after_install"
 
 # Uninstallation
 # ------------
