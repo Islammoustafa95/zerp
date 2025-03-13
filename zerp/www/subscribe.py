@@ -97,6 +97,10 @@ def create_payment_intent(plan, subdomain):
 def create_subscription(plan, subdomain, payment_method_id):
     """Create a subscription with trial period"""
     try:
+        # Get Stripe settings
+        settings = frappe.get_single("Zerp Settings")
+        stripe.api_key = settings.stripe_secret_key
+
         # Validate inputs
         if not plan:
             return {"success": False, "message": "Plan is required"}
@@ -134,15 +138,35 @@ def create_subscription(plan, subdomain, payment_method_id):
                 customer_id = customer.id
                 
                 # Save customer ID to user
-                user = frappe.get_doc("User", frappe.session.user)
-                user.db_set('stripe_customer_id', customer_id)
+                frappe.db.set_value("User", frappe.session.user, "stripe_customer_id", customer_id)
+                frappe.db.commit()
+
+            # Attach payment method to customer if not already attached
+            try:
+                stripe.PaymentMethod.attach(
+                    payment_method_id,
+                    customer=customer_id,
+                )
+            except stripe.error.InvalidRequestError as e:
+                if "already been attached" not in str(e):
+                    raise
+
+            # Set as default payment method
+            stripe.Customer.modify(
+                customer_id,
+                invoice_settings={
+                    'default_payment_method': payment_method_id
+                }
+            )
             
             # Create subscription
             subscription = stripe.Subscription.create(
                 customer=customer_id,
                 items=[{'price': plan_doc.stripe_price_id}],
-                trial_period_days=plan_doc.trial_period_days,
-                payment_settings={'save_default_payment_method': 'on_subscription'},
+                trial_period_days=14,  # 14 days trial
+                payment_behavior='default_incomplete',
+                payment_settings={'payment_method_types': ['card']},
+                expand=['latest_invoice.payment_intent'],
                 metadata={
                     'subdomain': subdomain,
                     'plan': plan,
@@ -161,8 +185,8 @@ def create_subscription(plan, subdomain, payment_method_id):
                 "status": "Active",
                 "stripe_customer_id": customer_id,
                 "stripe_subscription_id": subscription.id,
-                "trial_end_date": frappe.utils.add_days(None, subscription.trial_end) if subscription.trial_end else None,
-                "next_billing_date": frappe.utils.add_days(None, subscription.current_period_end)
+                "trial_end_date": frappe.utils.add_days(None, 14),  # 14 days from now
+                "next_billing_date": frappe.utils.add_days(None, 14)  # Same as trial end
             })
             
             doc.insert(ignore_permissions=True)
@@ -177,7 +201,8 @@ def create_subscription(plan, subdomain, payment_method_id):
             return {
                 "success": True,
                 "message": _("Subscription created successfully! Your site is being created."),
-                "subscription": doc.name
+                "subscription": doc.name,
+                "client_secret": subscription.latest_invoice.payment_intent.client_secret if subscription.latest_invoice else None
             }
             
         except stripe.error.StripeError as e:

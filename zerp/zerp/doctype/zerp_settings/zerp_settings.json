@@ -65,7 +65,7 @@
   },
   {
    "fieldname": "stripe_secret_key",
-   "fieldtype": "Password",
+   "fieldtype": "Data",
    "label": "Stripe Secret Key"
   },
   {
@@ -75,7 +75,7 @@
   },
   {
    "fieldname": "stripe_webhook_secret",
-   "fieldtype": "Password",
+   "fieldtype": "Data",
    "label": "Stripe Webhook Secret",
    "description": "Webhook signing secret from Stripe dashboard"
   },
